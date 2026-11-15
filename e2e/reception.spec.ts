@@ -30,8 +30,10 @@ test("reception adds extras, discounts, splits payment and prints", async ({
   await reception.getByRole("button", { name: /G3/ }).first().click();
   await expect(reception.locator(".bill-print")).toContainText("DineSense Demo Restaurant");
 
-  await reception.getByRole("button", { name: /Packaged Water/ }).first().click();
-  await expect(reception.locator(".bill-print")).toContainText("Packaged Water");
+  await reception.getByPlaceholder("Custom extra").fill("Water");
+  await reception.getByPlaceholder("₹", { exact: true }).fill("20");
+  await reception.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(reception.locator(".bill-print")).toContainText("Water");
 
   await reception.getByPlaceholder("%").fill("10");
   await reception.getByRole("button", { name: "Add %" }).click();

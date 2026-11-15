@@ -42,7 +42,7 @@ export async function openTableOrder(page: Page, label: string): Promise<void> {
 }
 
 export async function addFirstVariant(page: Page): Promise<void> {
-  const variant = page.getByRole("button", { name: /Half/ }).first();
+  const variant = page.locator("button:not([disabled])").filter({ hasText: "₹" }).first();
   await variant.click();
   await expect(page.getByText("Cart · 1 items")).toBeVisible();
 }

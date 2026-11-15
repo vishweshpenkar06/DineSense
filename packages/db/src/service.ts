@@ -73,7 +73,7 @@ export async function getMenuForZone(zoneId: string): Promise<MenuResponse> {
           };
         }),
       }),
-    ),
+    ).filter((category) => category.items.length > 0),
   };
 }
 

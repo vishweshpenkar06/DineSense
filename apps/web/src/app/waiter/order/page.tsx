@@ -1,6 +1,6 @@
 "use client";
 
-import type { MenuItemDto, MenuVariantDto, OrderContextResponse } from "@dinesense/core";
+import type { MenuCategoryDto, MenuItemDto, MenuVariantDto, OrderContextResponse } from "@dinesense/core";
 import { ConnectionBadge } from "@/components/connection-badge";
 import { errorMessage, getJson, isRetryable, postJson } from "@/lib/client";
 import { enqueuePending } from "@/lib/offline-orders";
@@ -20,6 +20,34 @@ type CartLine = {
 };
 
 const QUICK_NOTES = ["Less spicy", "No onion-garlic", "Extra spicy", "Jain"];
+
+function menuGroups(category: MenuCategoryDto): Array<{ title: string | null; items: MenuItemDto[] }> {
+  const items = category.items;
+  const group = (title: string, groupItems: MenuItemDto[]) => ({ title, items: groupItems });
+  if (category.name === "Soups") {
+    return [
+      group("Veg Soups", items.filter((item) => item.isVeg)),
+      group("Non Veg Soups", items.filter((item) => !item.isVeg)),
+    ].filter((entry) => entry.items.length > 0);
+  }
+  if (category.name === "Chinese") {
+    return [
+      group("Chinese Veg", items.filter((item) => item.isVeg)),
+      group("Chinese Non Veg", items.filter((item) => !item.isVeg)),
+    ].filter((entry) => entry.items.length > 0);
+  }
+  if (/fried rice/i.test(category.name)) {
+    const friedRice = items.filter((item) => /fried rice/i.test(item.name));
+    const noodles = items.filter((item) => !/fried rice/i.test(item.name));
+    return [
+      group("Veg Fried Rice", friedRice.filter((item) => item.isVeg)),
+      group("Non Veg Fried Rice", friedRice.filter((item) => !item.isVeg)),
+      group("Veg Noodles", noodles.filter((item) => item.isVeg)),
+      group("Non Veg Noodles", noodles.filter((item) => !item.isVeg)),
+    ].filter((entry) => entry.items.length > 0);
+  }
+  return [{ title: null, items }];
+}
 
 function newClientKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -243,51 +271,62 @@ function OrderScreen() {
           </div>
 
           <section className="mt-3 space-y-2">
-            {category?.items.map((item) => (
-              <article
-                key={item.id}
-                className={`rounded-xl border border-slate-800 bg-slate-900/60 p-3 ${
-                  item.available ? "" : "opacity-50"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">
-                      <span
-                        className={`mr-1.5 inline-block h-2.5 w-2.5 rounded-full ${
-                          item.isVeg ? "bg-emerald-400" : "bg-red-400"
-                        }`}
-                      />
-                      {item.name}
-                    </p>
-                    {item.nameLocal ? (
-                      <p className="text-xs text-slate-500">{item.nameLocal}</p>
+            {category
+              ? menuGroups(category).map((group) => (
+                  <div key={group.title ?? "all"} className="space-y-2">
+                    {group.title ? (
+                      <h3 className="pt-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                        {group.title}
+                      </h3>
                     ) : null}
+                    {group.items.map((item) => (
+                      <article
+                        key={item.id}
+                        className={`rounded-xl border border-slate-800 bg-slate-900/60 p-3 ${
+                          item.available ? "" : "opacity-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium">
+                              <span
+                                className={`mr-1.5 inline-block h-2.5 w-2.5 rounded-full ${
+                                  item.isVeg ? "bg-emerald-400" : "bg-red-400"
+                                }`}
+                              />
+                              {item.name}
+                            </p>
+                            {item.nameLocal ? (
+                              <p className="text-xs text-slate-500">{item.nameLocal}</p>
+                            ) : null}
+                          </div>
+                          {!item.available ? (
+                            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400">
+                              Out
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {item.variants.map((variant) => (
+                            <button
+                              key={variant.id}
+                              type="button"
+                              disabled={!variant.available || variant.pricePaise === null}
+                              onClick={() => addVariant(item, variant)}
+                              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm disabled:opacity-40"
+                            >
+                              {variant.label}
+                              <span className="ml-2 font-mono text-emerald-300">
+                                {variant.pricePaise === null ? "—" : money(variant.pricePaise)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                  {!item.available ? (
-                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400">
-                      Out
-                    </span>
-                  ) : null}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {item.variants.map((variant) => (
-                    <button
-                      key={variant.id}
-                      type="button"
-                      disabled={!variant.available || variant.pricePaise === null}
-                      onClick={() => addVariant(item, variant)}
-                      className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm disabled:opacity-40"
-                    >
-                      {variant.label}
-                      <span className="ml-2 font-mono text-emerald-300">
-                        {variant.pricePaise === null ? "—" : money(variant.pricePaise)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
+                ))
+              : null}
           </section>
 
           <section className="mt-5">
