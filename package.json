@@ -1,0 +1,24 @@
+{
+  "name": "dinesense",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @dinesense/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:core": "npm run test -w @dinesense/core",
+    "dev:web": "npm run dev -w @dinesense/web",
+    "dev:worker": "npm run dev -w @dinesense/worker",
+    "db:generate": "npm run db:generate -w @dinesense/db",
+    "db:migrate": "npm run db:migrate -w @dinesense/db",
+    "db:seed": "npm run db:seed -w @dinesense/db",
+    "acceptance": "npm run acceptance -w @dinesense/db"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

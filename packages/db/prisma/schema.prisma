@@ -1,0 +1,410 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  RECEPTIONIST
+  WAITER
+  CHEF
+}
+
+enum SurchargeType {
+  NONE
+  FLAT
+  PERCENT
+}
+
+enum TableState {
+  free
+  occupied
+  needs_order
+  ordered
+  food_ready
+  dining
+  bill_requested
+  needs_cleaning
+}
+
+enum CameraStatus {
+  UNKNOWN
+  OK
+  DEGRADED
+  OFFLINE
+}
+
+enum SessionKind {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum SessionOpenedBy {
+  VISION
+  MANUAL
+}
+
+enum SessionCloseReason {
+  PAID
+  ABANDONED
+  VOID
+}
+
+enum OrderStatus {
+  PLACED
+  PREPARING
+  READY
+  SERVED
+  CANCELLED
+}
+
+enum BillStatus {
+  OPEN
+  PAID
+  VOID
+}
+
+enum AdjustmentKind {
+  EXTRA
+  DISCOUNT
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+}
+
+enum TaskType {
+  food_ready
+  needs_order
+  bill_requested
+  clean_table
+  custom
+}
+
+enum TaskStatus {
+  OPEN
+  ACK
+  SNOOZED
+  DONE
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  role         Role
+  pinHash      String?
+  passwordHash String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders        Order[]    @relation("OrderPlacedBy")
+  finalizedBills Bill[]    @relation("BillFinalizedBy")
+  auditLogs     AuditLog[]
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model RestaurantProfile {
+  id          String   @id
+  name        String
+  address     String
+  phone       String?
+  gstin       String?
+  billFooter  String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Zone {
+  id             String        @id @default(uuid())
+  name           String
+  isAc           Boolean       @default(false)
+  surchargeType  SurchargeType @default(NONE)
+  surchargeValue Int           @default(0)
+  sort           Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tables        DiningTable[]
+  cameras       Camera[]
+  variantPrices VariantZonePrice[]
+  tasks         Task[]
+}
+
+model DiningTable {
+  id               String    @id @default(uuid())
+  zoneId           String
+  label            String
+  seats            Int       @default(4)
+  state            TableState @default(free)
+  cameraId         String?
+  zonePolygon      Json?
+  visionMutedUntil DateTime?
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  zone     Zone      @relation(fields: [zoneId], references: [id])
+  camera   Camera?   @relation(fields: [cameraId], references: [id])
+  sessions Session[]
+  tasks    Task[]
+  events   VisionEvent[]
+
+  @@unique([zoneId, label])
+  @@index([state])
+}
+
+model Camera {
+  id               String       @id @default(uuid())
+  name             String
+  zoneId           String
+  rtspUrlEncrypted String
+  status           CameraStatus @default(UNKNOWN)
+  lastHeartbeatAt  DateTime?
+  fps              Float?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  zone   Zone          @relation(fields: [zoneId], references: [id])
+  tables DiningTable[]
+  events VisionEvent[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items MenuItem[]
+}
+
+model MenuItem {
+  id            String   @id @default(uuid())
+  categoryId    String
+  name          String
+  nameLocal     String?
+  isVeg         Boolean  @default(false)
+  needsKitchen  Boolean  @default(true)
+  available     Boolean  @default(true)
+  active        Boolean  @default(true)
+  sort          Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category Category      @relation(fields: [categoryId], references: [id])
+  variants MenuVariant[]
+
+  @@index([categoryId, sort])
+}
+
+model MenuVariant {
+  id        String   @id @default(uuid())
+  itemId    String
+  label     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  item       MenuItem          @relation(fields: [itemId], references: [id])
+  prices     VariantZonePrice[]
+  orderItems OrderItem[]
+
+  @@index([itemId])
+}
+
+model VariantZonePrice {
+  variantId  String
+  zoneId     String
+  pricePaise Int
+  available  Boolean @default(true)
+  updatedAt  DateTime @updatedAt
+
+  variant MenuVariant @relation(fields: [variantId], references: [id])
+  zone    Zone        @relation(fields: [zoneId], references: [id])
+
+  @@id([variantId, zoneId])
+}
+
+model Session {
+  id               String              @id @default(uuid())
+  kind             SessionKind         @default(DINE_IN)
+  tableId          String?
+  state            TableState          @default(occupied)
+  openedBy         SessionOpenedBy     @default(MANUAL)
+  occupiedAt       DateTime            @default(now())
+  decisionDeadline DateTime?
+  firstOrderAt     DateTime?
+  emptyAt          DateTime?
+  closedAt         DateTime?
+  closeReason      SessionCloseReason?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  table  DiningTable? @relation(fields: [tableId], references: [id])
+  orders Order[]
+  tasks  Task[]
+  bill   Bill?
+
+  @@index([tableId, closedAt])
+  @@index([state, decisionDeadline])
+  @@index([closedAt, emptyAt])
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  sessionId   String
+  kotNumber   Int
+  businessDay DateTime
+  status      OrderStatus @default(PLACED)
+  placedById  String?
+  note        String?
+  placedAt    DateTime    @default(now())
+  preparingAt DateTime?
+  readyAt     DateTime?
+  servedAt    DateTime?
+  clientKey   String      @unique
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  session Session     @relation(fields: [sessionId], references: [id])
+  placedBy User?      @relation("OrderPlacedBy", fields: [placedById], references: [id])
+  items   OrderItem[]
+
+  @@unique([businessDay, kotNumber])
+  @@index([status, placedAt])
+}
+
+model OrderItem {
+  id               String  @id @default(uuid())
+  orderId          String
+  variantId        String
+  nameSnapshot     String
+  variantSnapshot  String
+  qty              Int
+  unitPricePaise   Int
+  note             String?
+  cancelled        Boolean @default(false)
+  cancelReason     String?
+
+  order   Order       @relation(fields: [orderId], references: [id])
+  variant MenuVariant @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+}
+
+model Bill {
+  id            String     @id @default(uuid())
+  sessionId     String     @unique
+  billNumber    String     @unique
+  subtotal      Int        @default(0)
+  extras        Int        @default(0)
+  surcharge     Int        @default(0)
+  discount      Int        @default(0)
+  taxableAmount Int        @default(0)
+  cgst          Int        @default(0)
+  sgst          Int        @default(0)
+  roundOff      Int        @default(0)
+  total         Int        @default(0)
+  status        BillStatus @default(OPEN)
+  finalizedById String?
+  paidAt        DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  session      Session          @relation(fields: [sessionId], references: [id])
+  finalizedBy  User?            @relation("BillFinalizedBy", fields: [finalizedById], references: [id])
+  adjustments  BillAdjustment[]
+  payments     Payment[]
+}
+
+model BillAdjustment {
+  id          String         @id @default(uuid())
+  billId      String
+  kind        AdjustmentKind
+  label       String
+  amountPaise Int
+  createdAt   DateTime       @default(now())
+
+  bill Bill @relation(fields: [billId], references: [id])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  billId      String
+  method      PaymentMethod
+  amountPaise Int
+  createdAt   DateTime      @default(now())
+
+  bill Bill @relation(fields: [billId], references: [id])
+}
+
+model Task {
+  id            String     @id @default(uuid())
+  type          TaskType
+  tableId       String?
+  zoneId        String?
+  sessionId     String?
+  status        TaskStatus @default(OPEN)
+  priority      Int
+  text          String
+  createdAt     DateTime   @default(now())
+  ackAt         DateTime?
+  snoozedUntil  DateTime?
+  lastAlertAt   DateTime   @default(now())
+  escalatedAt   DateTime?
+  doneAt        DateTime?
+  updatedAt     DateTime   @updatedAt
+
+  table   DiningTable? @relation(fields: [tableId], references: [id])
+  zone    Zone?        @relation(fields: [zoneId], references: [id])
+  session Session?     @relation(fields: [sessionId], references: [id])
+
+  @@index([status, priority, createdAt])
+  @@index([sessionId, type, status])
+}
+
+model VisionEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique
+  cameraId    String?
+  tableId     String?
+  state       String
+  personCount Int
+  confidence  Float
+  ts          DateTime
+  createdAt   DateTime @default(now())
+
+  camera Camera?      @relation(fields: [cameraId], references: [id])
+  table  DiningTable? @relation(fields: [tableId], references: [id])
+
+  @@index([createdAt])
+  @@index([tableId, ts])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([createdAt])
+}

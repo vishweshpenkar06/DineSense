@@ -1,0 +1,77 @@
+x-app-env: &app-env
+  DATABASE_URL: "postgresql://${POSTGRES_USER:-dinesense}:${POSTGRES_PASSWORD:-dinesense}@db:5432/${POSTGRES_DB:-dinesense}?schema=public"
+  SESSION_SECRET: "${SESSION_SECRET:-dev-session-secret-change-me}"
+  ENCRYPTION_KEY: "${ENCRYPTION_KEY:-dev-encryption-key-change-me}"
+  VISION_SHARED_SECRET: "${VISION_SHARED_SECRET:-dev-vision-secret}"
+  ENABLE_DEV_CONSOLE: "${ENABLE_DEV_CONSOLE:-true}"
+  COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+
+x-app: &app
+  image: dinesense:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment: *app-env
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-dinesense}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-dinesense}"
+      POSTGRES_DB: "${POSTGRES_DB:-dinesense}"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dinesense} -d ${POSTGRES_DB:-dinesense}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    ports:
+      - "5432:5432"
+
+  migrate:
+    <<: *app
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      ["npx", "prisma", "migrate", "deploy", "--schema", "packages/db/prisma/schema.prisma"]
+
+  web:
+    <<: *app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "node -e \"fetch('http://127.0.0.1:3000/api/health').then(() => process.exit(0)).catch(() => process.exit(1))\""
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    <<: *app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["npm", "run", "start", "-w", "@dinesense/worker"]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+
+volumes:
+  db-data:
