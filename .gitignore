@@ -13,3 +13,9 @@ data/
 tmp/
 
 .serena/
+
+caddy-root.crt
+
+test-results/
+playwright-report/
+blob-report/

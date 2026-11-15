@@ -142,6 +142,7 @@ model Zone {
   cameras       Camera[]
   variantPrices VariantZonePrice[]
   tasks         Task[]
+  sessions      Session[]
 }
 
 model DiningTable {
@@ -243,6 +244,7 @@ model Session {
   id               String              @id @default(uuid())
   kind             SessionKind         @default(DINE_IN)
   tableId          String?
+  zoneId           String?
   state            TableState          @default(occupied)
   openedBy         SessionOpenedBy     @default(MANUAL)
   occupiedAt       DateTime            @default(now())
@@ -255,11 +257,13 @@ model Session {
   updatedAt        DateTime            @updatedAt
 
   table  DiningTable? @relation(fields: [tableId], references: [id])
+  zone   Zone?        @relation(fields: [zoneId], references: [id])
   orders Order[]
   tasks  Task[]
   bill   Bill?
 
   @@index([tableId, closedAt])
+  @@index([zoneId])
   @@index([state, decisionDeadline])
   @@index([closedAt, emptyAt])
 }

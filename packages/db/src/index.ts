@@ -6,5 +6,6 @@ export * from "./settings";
 export * from "./engine";
 export * from "./jobs";
 export * from "./orders";
+export * from "./service";
 export * from "./snapshot";
 export * from "./vision";

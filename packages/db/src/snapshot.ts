@@ -141,6 +141,8 @@ export async function buildSnapshot(me: {
       REALERT_S: settings.REALERT_S,
       ALERT_ESCALATE_S: settings.ALERT_ESCALATE_S,
       VISION_MUTE_S: settings.VISION_MUTE_S,
+      TICKET_AMBER_S: settings.TICKET_AMBER_S,
+      TICKET_RED_S: settings.TICKET_RED_S,
       BUSINESS_DAY_START: settings.BUSINESS_DAY_START,
     },
     tables: tableDtos,

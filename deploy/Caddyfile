@@ -1,13 +1,10 @@
-{
-	auto_https off
-}
-
-# Phase 1 placeholder. Phase 3 replaces this with HTTPS on the LAN
-# (DNS-01 or Caddy internal CA) so the PWA can use a secure context.
-:80 {
+# Phase 3 LAN HTTPS with Caddy's internal CA.
+# Phones must install the root certificate once (docs/HTTPS.md).
+# With a real domain + DNS challenge, use deploy/Caddyfile.acme instead.
+{$SITE_ADDRESS:localhost} {
+	tls internal
 	encode gzip
 	reverse_proxy web:3000 {
-		# Server-Sent Events must not be buffered.
 		flush_interval -1
 	}
 }

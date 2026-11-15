@@ -16,9 +16,13 @@
     "db:generate": "npm run db:generate -w @dinesense/db",
     "db:migrate": "npm run db:migrate -w @dinesense/db",
     "db:seed": "npm run db:seed -w @dinesense/db",
-    "acceptance": "npm run acceptance -w @dinesense/db"
+    "acceptance": "npm run acceptance -w @dinesense/db",
+    "test:e2e": "playwright test"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1"
   }
 }

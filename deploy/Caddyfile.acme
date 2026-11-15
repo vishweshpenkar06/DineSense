@@ -1,0 +1,12 @@
+{
+	email {$ACME_EMAIL}
+}
+
+# Use this file for a real domain whose DNS points at the mini PC.
+# Caddy obtains a publicly trusted certificate automatically.
+{$SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy web:3000 {
+		flush_interval -1
+	}
+}

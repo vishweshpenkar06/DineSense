@@ -60,27 +60,34 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         : null;
 
     if (!session || session.closedAt) {
-      throw new ConflictError("No open visit for this table — seat the table first");
-    }
-    if (session.kind !== "DINE_IN" || !session.tableId) {
-      throw new ConflictError("Takeaway ordering arrives with the waiter app");
-    }
-    if (session.state === "free" || session.state === "needs_cleaning") {
-      throw new ConflictError("This table is not accepting orders");
+      throw new ConflictError("No open visit — seat the table first");
     }
 
-    const table = await tx.diningTable.findUnique({
-      where: { id: session.tableId },
-      select: { id: true, zoneId: true },
-    });
-    if (!table) throw new NotFoundError("table");
+    let tableId: string | null = null;
+    let zoneId: string;
+    if (session.kind === "DINE_IN") {
+      if (!session.tableId) throw new ConflictError("Dine-in visit has no table");
+      if (session.state === "free" || session.state === "needs_cleaning") {
+        throw new ConflictError("This table is not accepting orders");
+      }
+      const table = await tx.diningTable.findUnique({
+        where: { id: session.tableId },
+        select: { id: true, zoneId: true },
+      });
+      if (!table) throw new NotFoundError("table");
+      tableId = table.id;
+      zoneId = table.zoneId;
+    } else {
+      if (!session.zoneId) throw new ConflictError("Takeaway visit has no price zone");
+      zoneId = session.zoneId;
+    }
 
     const variantIds = [...new Set(input.items.map((item) => item.variantId))];
     const variants = await tx.menuVariant.findMany({
       where: { id: { in: variantIds } },
       include: {
         item: true,
-        prices: { where: { zoneId: table.zoneId } },
+        prices: { where: { zoneId } },
       },
     });
     const byId = new Map(variants.map((variant) => [variant.id, variant]));
@@ -129,15 +136,23 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       },
     });
 
-    const applied = await applyTableEventTx(tx, {
-      tableId: table.id,
-      event: { type: "ORDER_PLACED", at },
-      settings,
-      openedBy: "MANUAL",
-      actorId: input.placedById ?? null,
-    });
+    let applied: ApplyResult | null = null;
+    if (tableId) {
+      applied = await applyTableEventTx(tx, {
+        tableId,
+        event: { type: "ORDER_PLACED", at },
+        settings,
+        openedBy: "MANUAL",
+        actorId: input.placedById ?? null,
+      });
+    } else {
+      await tx.session.update({
+        where: { id: session.id },
+        data: { state: "ordered", firstOrderAt: session.firstOrderAt ?? at },
+      });
+    }
 
-    return { orderId: order.id, kotNumber, sessionId: session.id, tableId: table.id, applied };
+    return { orderId: order.id, kotNumber, sessionId: session.id, tableId, applied };
   }).catch((error: unknown) => {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       throw new ConflictError("Duplicate order (same clientKey)");

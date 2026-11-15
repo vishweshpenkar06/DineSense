@@ -3,17 +3,28 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { closeNotifyPool, prisma } from "../src";
 import {
+  getKitchenTickets,
+  getMenuForZone,
   getVisionConfig,
   loadSettings,
+  moveSession,
   placeOrder,
   processAbandoned,
   processCameraHealth,
   processDueTimers,
   processTaskAlerts,
+  readyOrder,
   recordHeartbeat,
   recordVisionEvent,
+  requestBill,
+  serveSession,
   setTableStateManually,
+  setVariantAvailability,
   setVisionMute,
+  startOrder,
+  createTakeawaySession,
+  cancelOrderItem,
+  buildOrderContext,
   workerLastTick,
   workerTick,
 } from "../src";
@@ -355,6 +366,184 @@ check("worker heartbeat is written to settings", (await workerLastTick()) !== nu
 
 const settings = await loadSettings();
 check("DECIDE_WINDOW_S is still the required 180s", settings.DECIDE_WINDOW_S === 180);
+
+// ---------------------------------------------------------------------------
+// Phase 3: menu, kitchen lifecycle, cancellation rules, takeaway and moving.
+// ---------------------------------------------------------------------------
+const firstZone = await prisma.zone.findFirstOrThrow({ where: { isAc: true } });
+const adminUser = await prisma.user.findFirstOrThrow({ where: { role: "ADMIN" } });
+const waiterUser = await prisma.user.findFirstOrThrow({ where: { role: "WAITER" } });
+const receptionUser = await prisma.user.findFirstOrThrow({ where: { role: "RECEPTIONIST" } });
+const g4 = await prisma.diningTable.findFirstOrThrow({ where: { label: "G4" } });
+
+const groundMenu = await getMenuForZone(ground.id);
+const firstMenu = await getMenuForZone(firstZone.id);
+const firstPrices = new Map(
+  firstMenu.categories.flatMap((category) =>
+    category.items.flatMap((item) =>
+      item.variants.map((variant) => [variant.id, variant.pricePaise] as const),
+    ),
+  ),
+);
+let priceDifference: string | null = null;
+for (const category of groundMenu.categories) {
+  for (const item of category.items) {
+    for (const variant of item.variants) {
+      const other = firstPrices.get(variant.id);
+      if (variant.pricePaise !== null && other !== null && other !== undefined && other !== variant.pricePaise) {
+        priceDifference = `${variant.label}: grounded ${variant.pricePaise} vs AC ${other}`;
+      }
+    }
+  }
+}
+check("menu prices differ between ground and AC floors", priceDifference !== null, priceDifference ?? "");
+
+await resetRuntime();
+await sim("occupied");
+const flowSession = await openSession();
+const flowOrder = await orderOnce();
+await startOrder(flowOrder.orderId, { id: adminUser.id, role: "ADMIN" });
+await readyOrder(flowOrder.orderId, { id: adminUser.id, role: "ADMIN" });
+const readyTable = await tableRow();
+const readyTask = flowSession
+  ? await prisma.task.findFirst({ where: { sessionId: flowSession.id, type: "food_ready" } })
+  : null;
+check("chef READY moves the table to food_ready", readyTable.state === "food_ready");
+check("READY creates a pickup task for the waiter", readyTask?.status === "OPEN");
+if (flowSession) {
+  await serveSession(flowSession.id, { id: waiterUser.id, role: "WAITER" });
+}
+const servedTable = await tableRow();
+const servedTask = flowSession
+  ? await prisma.task.findFirst({ where: { sessionId: flowSession.id, type: "food_ready" } })
+  : null;
+check("serve moves the table to dining", servedTable.state === "dining");
+check("serving completes the pickup task", servedTask?.status === "DONE");
+
+await resetRuntime();
+await sim("occupied");
+const billOrder = await orderOnce();
+const billSession = await openSession();
+if (billSession) {
+  await requestBill({ sessionId: billSession.id, actorId: waiterUser.id });
+}
+const billTable = await tableRow();
+const billTask = billSession
+  ? await prisma.task.findFirst({ where: { sessionId: billSession.id, type: "bill_requested" } })
+  : null;
+check("requesting the bill flags the table", billTable.state === "bill_requested");
+check("requesting the bill creates a task", billTask?.status === "OPEN");
+
+await resetRuntime();
+await sim("occupied");
+const cancelOrder = await orderOnce();
+const cancelItem = await prisma.orderItem.findFirstOrThrow({
+  where: { orderId: cancelOrder.orderId },
+});
+await cancelOrderItem({
+  itemId: cancelItem.id,
+  actor: { id: waiterUser.id, role: "WAITER" },
+});
+const cancelled = await prisma.orderItem.findUniqueOrThrow({ where: { id: cancelItem.id } });
+check("waiter can cancel an item before cooking starts", cancelled.cancelled);
+
+await resetRuntime();
+await sim("occupied");
+const fullCancelOrder = await orderOnce();
+await startOrder(fullCancelOrder.orderId, { id: adminUser.id, role: "ADMIN" });
+const fullCancelItem = await prisma.orderItem.findFirstOrThrow({
+  where: { orderId: fullCancelOrder.orderId },
+});
+let waiterDenied = false;
+try {
+  await cancelOrderItem({
+    itemId: fullCancelItem.id,
+    actor: { id: waiterUser.id, role: "WAITER" },
+  });
+} catch {
+  waiterDenied = true;
+}
+check("waiter cannot cancel after cooking starts", waiterDenied);
+await cancelOrderItem({
+  itemId: fullCancelItem.id,
+  reason: "customer changed their mind",
+  actor: { id: receptionUser.id, role: "RECEPTIONIST" },
+});
+const receptionCancel = await prisma.orderItem.findUniqueOrThrow({
+  where: { id: fullCancelItem.id },
+});
+const cancelledOrder = await prisma.order.findUniqueOrThrow({
+  where: { id: fullCancelOrder.orderId },
+});
+check("reception can cancel after cooking starts with a reason", receptionCancel.cancelled === true);
+check("a fully cancelled ticket is marked CANCELLED", cancelledOrder.status === "CANCELLED");
+
+await resetRuntime();
+const takeaway = await createTakeawaySession({ actorId: waiterUser.id });
+const takeawayOrder = await placeOrder({
+  sessionId: takeaway.sessionId,
+  items: [{ variantId: variant.id, qty: 1 }],
+  clientKey: randomUUID(),
+});
+const tickets = await getKitchenTickets();
+const takeawayTicket = tickets.find((ticket) => ticket.id === takeawayOrder.orderId);
+check("takeaway sessions accept orders", takeawayTicket !== undefined);
+check("takeaway tickets appear without a table", takeawayTicket?.tableLabel === null);
+await startOrder(takeawayOrder.orderId, { id: adminUser.id, role: "ADMIN" });
+await readyOrder(takeawayOrder.orderId, { id: adminUser.id, role: "ADMIN" });
+const takeawayTask = await prisma.task.findFirst({
+  where: { sessionId: takeaway.sessionId, type: "food_ready" },
+});
+check("takeaway READY creates a pickup task", takeawayTask?.status === "OPEN");
+await serveSession(takeaway.sessionId, { id: waiterUser.id, role: "WAITER" });
+const takeawayAfter = await prisma.session.findUniqueOrThrow({ where: { id: takeaway.sessionId } });
+check("takeaway visits move to dining after pickup", takeawayAfter.state === "dining");
+const takeawayContext = await buildOrderContext({ sessionId: takeaway.sessionId });
+check("takeaway context resolves the floor menu", takeawayContext.kind === "takeaway" && takeawayContext.menu.categories.length > 0);
+
+await resetRuntime();
+await sim("occupied");
+const moveOrder = await orderOnce();
+const moveSessionRow = await openSession();
+if (moveSessionRow) {
+  await moveSession({
+    sessionId: moveSessionRow.id,
+    targetTableId: g4.id,
+    actorId: waiterUser.id,
+  });
+}
+const sourceAfterMove = await tableRow();
+const targetAfterMove = await prisma.diningTable.findUniqueOrThrow({ where: { id: g4.id } });
+const movedSession = moveSessionRow
+  ? await prisma.session.findUniqueOrThrow({ where: { id: moveSessionRow.id } })
+  : null;
+check("moving a visit frees the source table", sourceAfterMove.state === "free");
+check("moving a visit occupies the target table", targetAfterMove.state === "ordered");
+check("the session points at the new table", movedSession?.tableId === g4.id);
+check("the moved kitchen ticket is still open", (await getKitchenTickets()).some((ticket) => ticket.id === moveOrder.orderId));
+
+await setVariantAvailability({ variantId: variant.id, available: false, actorId: adminUser.id });
+const outMenu = await getMenuForZone(ground.id);
+let hiddenVariant = false;
+for (const category of outMenu.categories) {
+  for (const item of category.items) {
+    for (const candidate of item.variants) {
+      if (candidate.id === variant.id && !candidate.available) hiddenVariant = true;
+    }
+  }
+}
+check("out-of-stock hides the variant on that floor", hiddenVariant);
+await setVariantAvailability({ variantId: variant.id, available: true, actorId: adminUser.id });
+const restoredMenu = await getMenuForZone(ground.id);
+let restoredVariant = false;
+for (const category of restoredMenu.categories) {
+  for (const item of category.items) {
+    for (const candidate of item.variants) {
+      if (candidate.id === variant.id && candidate.available) restoredVariant = true;
+    }
+  }
+}
+check("restocking makes the variant orderable again", restoredVariant);
 
 await resetRuntime();
 const failed = results.filter((result) => !result.pass);

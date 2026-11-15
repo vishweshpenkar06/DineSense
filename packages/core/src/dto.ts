@@ -76,6 +76,8 @@ export type Snapshot = {
     REALERT_S: number;
     ALERT_ESCALATE_S: number;
     VISION_MUTE_S: number;
+    TICKET_AMBER_S: number;
+    TICKET_RED_S: number;
     BUSINESS_DAY_START: string;
   };
   tables: SnapshotTable[];
@@ -112,3 +114,79 @@ export function eventAllowedForRole(role: StaffRole, type: string): boolean {
   }
   return true;
 }
+
+export type MenuVariantDto = {
+  id: string;
+  label: string;
+  pricePaise: number | null;
+  available: boolean;
+};
+
+export type MenuItemDto = {
+  id: string;
+  name: string;
+  nameLocal: string | null;
+  isVeg: boolean;
+  needsKitchen: boolean;
+  available: boolean;
+  variants: MenuVariantDto[];
+};
+
+export type MenuCategoryDto = {
+  id: string;
+  name: string;
+  items: MenuItemDto[];
+};
+
+export type MenuResponse = {
+  zone: { id: string; name: string; isAc: boolean };
+  categories: MenuCategoryDto[];
+};
+
+export type StockVariantDto = {
+  id: string;
+  itemId: string;
+  itemName: string;
+  label: string;
+  needsKitchen: boolean;
+  available: boolean;
+};
+
+export type KitchenTicketItemDto = {
+  id: string;
+  name: string;
+  variant: string;
+  qty: number;
+  note: string | null;
+  cancelled: boolean;
+  cancelReason: string | null;
+};
+
+export type KitchenTicketDto = {
+  id: string;
+  kotNumber: number;
+  status: "PLACED" | "PREPARING" | "READY" | "CANCELLED";
+  tableLabel: string | null;
+  zoneName: string | null;
+  isAc: boolean;
+  kind: "DINE_IN" | "TAKEAWAY";
+  sessionId: string;
+  placedAt: string;
+  ageSeconds: number;
+  note: string | null;
+  items: KitchenTicketItemDto[];
+};
+
+export type OrderContextResponse = {
+  kind: "table" | "takeaway";
+  zone: { id: string; name: string; isAc: boolean };
+  table: { id: string; label: string; seats: number } | null;
+  session: {
+    id: string;
+    kind: "DINE_IN" | "TAKEAWAY";
+    state: string;
+    tableId: string | null;
+    decisionDeadline: string | null;
+  } | null;
+  menu: MenuResponse;
+};

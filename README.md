@@ -3,15 +3,14 @@
 Local-first restaurant operations for a small two-floor Indo-Chinese restaurant.
 One mini PC, no internet required, phones on the LAN.
 
-**Status: Phase 2 — Core Engine + Vision.** The table state machine, the 3-minute
-decision timer, waiter tasks, SSE realtime, the dev console and the Python vision
-service (YOLO11n + ByteTrack, RTSP/video, debouncing, snapshots, tuning log) are
-built and tested. Waiter/chef/reception/admin product screens, billing and the setup
-wizard are later phases.
+**Status: Phase 3 — Core + Vision + Staff Apps.** The engine, the Python vision
+service, the waiter and chef PWAs, LAN HTTPS, sound/wake lock, the offline order
+queue and the kitchen lifecycle are built and tested. Reception/billing, admin and
+the setup wizard are later phases.
 
 ---
 
-## What is built (Phases 1–2)
+## What is built (Phases 1–3)
 
 - Full Prisma data model for the whole product (§9 of the masterplan) with one
   migration, including a partial unique index that enforces one open visit per table.
@@ -38,6 +37,20 @@ wizard are later phases.
   reduction with a `degraded` status, reconnect with backoff, and a tuning CSV.
 - The worker marks a camera **offline after 30 seconds without a heartbeat** and
   the next heartbeat restores it; manual table control keeps working.
+- **Waiter PWA** (`/waiter`): PIN keypad, shift sound unlock + wake lock + vibration,
+  “Next up” task, floor board with countdowns, order screen with floor prices,
+  variants, quick notes and free text, parcels, move table, request bill, camera
+  mute, and a cameras tab with annotated live images.
+- **Chef PWA** (`/chef`): New / Preparing / Ready columns, age timers (amber/red),
+  notes, By-dish aggregation, stock toggles, chimes for new and cancelled tickets.
+- **Offline-tolerant ordering:** carts that cannot reach the server are stored in
+  the browser and retried with the same `clientKey`, so a flaky phone never creates
+  two tickets.
+- **Kitchen lifecycle:** start/ready/served, item cancellation rules (waiter before
+  cooking; reception/admin after, with a reason), takeaway tickets, stock changes and
+  bill requests.
+- **PWA shell + HTTPS:** manifest, icons, service worker, standalone install, Caddy
+  with an internal CA, root-certificate export script and device install docs.
 
 ### Acceptance covered by `npm run acceptance`
 
@@ -75,6 +88,24 @@ Verified with the generated demo video on the real CPU model:
 export ONNX/OpenVINO and cap Torch threads; the governor already drops to 1 FPS and
 reports `degraded` when it cannot keep up.
 
+### Phase 3 acceptance (staff apps)
+
+- `npm run acceptance`: **61/61** checks, including the full kitchen lifecycle,
+  cancellation rules, takeaway, moving tables, stock and floor pricing.
+- `npm run test:e2e`: **3/3** Playwright tests:
+  1. waiter seats G3 → orders → chef starts/readies → waiter serves → requests bill,
+     across two independent browser contexts;
+  2. the waiter phone goes offline mid-order, the order is queued, and after
+     reconnecting exactly one ticket is created for G5;
+  3. manifest, icons and the service worker are served and registered.
+- HTTPS verified end-to-end through Caddy's internal CA (`https://localhost`),
+  including staff login; the camera proxy returns `image/jpeg` for staff and `401`
+  for anonymous callers.
+
+Physical phones/tablets were not available; the two-device flow used two independent
+browser contexts, and network loss used Chromium's offline mode. Install the CA and
+run the manual list below on real hardware at handover.
+
 ---
 
 ## Repository layout
@@ -85,7 +116,10 @@ apps/worker       Node worker: timers, abandonment, task alerts
 packages/core     Pure TypeScript domain logic + Vitest tests
 packages/db       Prisma schema/migrations/seed + DB services (engine, jobs, orders)
 services/vision   Python FastAPI + YOLO11n vision service, pytest, demo generator
-deploy/Caddyfile  Phase 1 reverse-proxy placeholder
+e2e               Playwright: two-device order flow, offline queue, PWA shell
+deploy            Caddyfile (internal CA) and Caddyfile.acme
+docs              HTTPS/root-certificate guide
+scripts           PWA icons, CA export
 docker-compose.yml
 ```
 
@@ -125,7 +159,16 @@ On Ubuntu/Debian install `docker-ce` and `docker-compose-plugin` from Docker's
 official repository. Verify with `docker compose version`. The stack is Docker-only;
 Podman is not a supported install path for this project.
 
-Open <http://localhost:3000> (or the Caddy placeholder at <http://localhost:8080>).
+Open **https://localhost** (Caddy internal CA; accept the warning for local testing,
+or install `caddy-root.crt` — see `docs/HTTPS.md`). The direct dev URL
+<http://localhost:3000> also works for PWA testing because localhost is a secure
+context; real phones must use `https://<SITE_ADDRESS>`.
+
+| App | URL |
+|---|---|
+| Waiter | `/waiter` |
+| Chef | `/chef` |
+| Dev console (admin) | `/dev` |
 
 Seed credentials (development only):
 
@@ -157,9 +200,13 @@ npm run dev:web               # terminal 2
 ```bash
 npm run test:core             # pure domain tests (no DB)
 npm run typecheck             # all workspaces
-npm run acceptance            # needs migrated + seeded Postgres
+npm run acceptance            # needs migrated + seeded Postgres (61 checks)
+npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000
 docker compose run --rm --no-deps vision pytest   # 36 vision tests
 ```
+
+For deterministic E2E runs, stop the demo vision service first
+(`docker compose stop vision`) so the video does not change table states mid-test.
 
 `npm run acceptance` exercises the engine against the real database and spawns a
 fresh Node process for the “worker restart” case. It resets runtime rows at the
@@ -181,6 +228,29 @@ start and end; menu/zone/table seed data is untouched.
 8. Run the vision demo: cameras show `OK` with ~2.5 FPS, the vision-event log fills,
    and the annotated snapshot is available on port 8100. Stop the vision container:
    after 30s the dev console shows “Camera offline — set tables manually.”
+
+## Waiter and chef walkthrough
+
+1. Sign in with a PIN. Waiters land on `/waiter`, chefs on `/chef`.
+2. Tap **Sound is off — tap to start your shift**: this unlocks audio, requests the
+   screen wake lock and confirms the alert chime.
+3. **Waiter:** tap **Seat table** on G3 (manual override; vision does this
+   automatically in production), then **Order**. Tap a size, adjust quantity/notes
+   and **Send to kitchen**. The chef's board updates over SSE.
+4. **Chef:** tap **Start**, then **Ready**. The waiter's Next-up shows the
+   higher-priority “food is ready — pick up” task with sound/vibration.
+5. **Waiter:** tap **Mark served**. When every ticket is served the table becomes
+   Dining. **More actions → Request bill** flags it for the receptionist.
+6. **Chef:** toggle **By dish** for the aggregated pick list; use **Stock** to mark a
+   variant out of stock (the waiter menu greys it immediately). Cancelled tickets
+   flash red with a different tone.
+7. **Parcel:** **+ New parcel** creates a takeaway visit and a ticket with no table.
+8. **Move:** on a table card, **More actions → Move to table**.
+9. **Offline:** add items, switch the phone to airplane mode, press Send. The board
+   shows “order queued”; when the network returns it is sent once with the same
+   `clientKey`.
+10. **Cameras:** `/waiter/cameras` shows the annotated vision feed per floor and an
+    offline notice.
 
 ## Manual verification (Phase 1)
 
@@ -207,6 +277,25 @@ The dev console has **no sound or vibration** — that arrives with the waiter P
 Phase 3. The alert here is the red banner, red table card and the task. `docker compose
 logs -f worker` shows a tick failure if anything is wrong.
 
+### Staff app verification (Phase 3)
+
+| # | Do this | Expect |
+|---|---|---|
+| A1 | PIN `1111` / `2222` | Waiter → `/waiter`, chef → `/chef` |
+| A2 | Start shift | Green “Sound on · screen stays awake” bar |
+| A3 | Seat G3, order two items, send | Chef ticket for G3 within 1–2s |
+| A4 | Chef Start → Ready | Waiter gets a food-ready alert that outranks waiting-to-order |
+| A5 | Waiter Mark served | Table becomes Dining; task disappears |
+| A6 | Request bill | Table becomes Bill requested (payment is Phase 4) |
+| A7 | Chef By dish | Quantities aggregate across tables |
+| A8 | Chef marks a variant out of stock | Waiter menu greys it without reload |
+| A9 | Ground vs AC table order screens | Same dish shows each floor's price |
+| A10 | New parcel → order | Ticket with “Parcel” and no table |
+| A11 | Move a seated visit | Source frees, target takes the state and ticket |
+| A12 | Airplane mode mid-order → send → reconnect | One queued order, one ticket, no duplicate |
+| A13 | Cameras tab | Annotated JPEG; offline notice when vision stops |
+| A14 | Install over HTTPS on a phone | Standalone icon, no browser chrome |
+
 ### Vision verification
 
 | # | Do this | Expect |
@@ -219,7 +308,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 | V6 | Open `http://127.0.0.1:8100/health` | Per-camera status, FPS, queue and config source |
 | V7 | Open `http://127.0.0.1:8100/snapshot/<camera_id>.jpg` | Annotated zones (green/red) and FPS header |
 
-## API surface (Phases 1–2)
+## API surface (Phases 1–3)
 
 - `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me`
 - `GET /api/snapshot` · `GET /api/stream` (SSE, role-filtered)
@@ -228,11 +317,18 @@ logs -f worker` shows a tick failure if anything is wrong.
 - `POST /api/tasks/:id/action` (`ack` · `snooze` · `done`)
 - `POST /api/vision/events` · `POST /api/vision/heartbeat` · `GET /api/vision/config`
 - `GET /api/health` (DB, worker heartbeat, camera status)
+- Menu/kitchen: `GET /api/menu` · `GET /api/menu/stock` ·
+  `POST /api/menu-variants/:id/availability` · `GET /api/kitchen/tickets`
+- Order lifecycle: `POST /api/orders/:id/start|ready|served` ·
+  `POST /api/order-items/:id/cancel` · `GET /api/order-context`
+- Visits: `POST /api/sessions` (takeaway) · `POST /api/sessions/:id/request-bill` ·
+  `POST /api/sessions/:id/move` · `POST /api/sessions/:id/served` ·
+  `GET /api/camera/:id/snapshot.jpg` (staff proxy)
 - Vision service (inside the LAN / bound to 127.0.0.1: `8100`): `GET /health`,
   `GET /snapshot/{camera_id}.jpg`
 - Dev-only: `POST /api/dev/simulate` · `POST /api/dev/order` · `POST /api/dev/time-skip` · `GET /api/dev/events`
 
-## Assumptions and defaults (Phases 1–2)
+## Assumptions and defaults (Phases 1–3)
 
 - **Vision debounce lives in the vision service**, so an incoming `occupied`/`empty`
   event is treated as already confirmed. The app additionally waits
@@ -251,6 +347,28 @@ logs -f worker` shows a tick failure if anything is wrong.
   screen in Phase 6; browsers never receive RTSP credentials.
 - **Tuning log:** `services/vision/demo/tuning.csv` (bind-mounted `/data/tuning.csv`)
   stores per-table counts and debounced states, never images.
+- **Takeaway prices** use the first zone by sort (Ground Floor, non-AC) unless a
+  zone is supplied. There is no floor picker in the parcel flow yet.
+- **Stock** is per variant across both floors; marking a variant out of stock makes
+  it unavailable on every floor. The chef board also lists beverages.
+- **Serving:** a ticket can be served from the kitchen once READY; when every
+  non-cancelled ticket in the visit is SERVED, the table moves to Dining. A
+  food-ready task stays until all tickets are served.
+- **Cancellations:** waiters may cancel items only while the ticket is still
+  `PLACED`; after cooking starts only reception/admin can, with a written reason.
+  A fully cancelled ticket is marked `CANCELLED` and stays red on the chef board for
+  two minutes.
+- **HTTPS:** Caddy uses its internal CA by default (`SITE_ADDRESS`, default
+  `localhost`). Install `caddy-root.crt` on devices; set `COOKIE_SECURE=true` for
+  real HTTPS installs. Do not delete the `caddy-data` volume afterwards.
+- **Offline queue:** pending orders live in `localStorage`; they retry on `online`,
+  every 5 s while the board is open, and whenever the order page reloads. `clientKey`
+  makes retries idempotent.
+- **Service worker:** network-first for navigations, cache-first for static assets,
+  and it never caches `/api/` responses (stale table state is dangerous).
+- **E2E coverage:** the two-device flow uses two browser contexts and Chromium
+  offline mode, not physical phones; the camera tab depends on the vision service
+  (demo videos in this repo).
 - **Manual override** changes the table state; setting a table to `free` voids the
   open visit and cancels its tasks, and the action is audited.
 - **Takeaway ordering** is intentionally rejected until Phase 3 introduces the
@@ -264,5 +382,5 @@ logs -f worker` shows a tick failure if anything is wrong.
 
 ## Not built yet
 
-Phase 3 waiter/chef PWAs + HTTPS, Phase 4 billing, Phase 5 admin, Phase 6 camera
-calibration/proxy, Phase 7 productization.
+Phase 4 receptionist + billing/payments/printing, Phase 5 admin, Phase 6 camera
+calibration/admin review, Phase 7 productization.

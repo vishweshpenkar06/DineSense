@@ -5,6 +5,7 @@ x-app-env: &app-env
   VISION_SHARED_SECRET: "${VISION_SHARED_SECRET:-dev-vision-secret}"
   ENABLE_DEV_CONSOLE: "${ENABLE_DEV_CONSOLE:-true}"
   COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+  VISION_URL: "http://vision:8100"
 
 x-app: &app
   image: dinesense:local
@@ -101,10 +102,18 @@ services:
     restart: unless-stopped
     depends_on:
       - web
+    environment:
+      SITE_ADDRESS: "${SITE_ADDRESS:-localhost}"
+      ACME_EMAIL: "${ACME_EMAIL:-}"
     ports:
-      - "8080:80"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
 
 volumes:
   db-data:
+  caddy-data:
+  caddy-config:
