@@ -7,8 +7,10 @@ import {
   loadSettings,
   placeOrder,
   processAbandoned,
+  processCameraHealth,
   processDueTimers,
   processTaskAlerts,
+  recordHeartbeat,
   recordVisionEvent,
   setTableStateManually,
   setVisionMute,
@@ -313,7 +315,28 @@ const escalated = alertTask ? await prisma.task.findUnique({ where: { id: alertT
 check("unacknowledged task escalates after 120s", escalated?.escalatedAt !== null);
 check("repeat alert fires after 60s", alerts.realerted === 1, `realerted=${alerts.realerted}`);
 
-// 10. Vision config contract.
+// 10. Camera heartbeat and the 30s offline rule.
+await recordHeartbeat({ cameraId: camera.id, status: "ok", fps: 3.1, ts: new Date() });
+const heartbeated = await prisma.camera.findUniqueOrThrow({ where: { id: camera.id } });
+check("a heartbeat marks the camera OK", heartbeated.status === "OK");
+await prisma.camera.update({
+  where: { id: camera.id },
+  data: { lastHeartbeatAt: new Date(Date.now() - 31_000) },
+});
+const markedOffline = await processCameraHealth();
+check(
+  "a camera with no heartbeat for 30s is OFFLINE",
+  markedOffline >= 1 &&
+    (await prisma.camera.findUniqueOrThrow({ where: { id: camera.id } })).status === "OFFLINE",
+  `offline=${markedOffline}`,
+);
+await recordHeartbeat({ cameraId: camera.id, status: "ok", fps: 3.0, ts: new Date() });
+check(
+  "a recovery heartbeat restores the camera to OK",
+  (await prisma.camera.findUniqueOrThrow({ where: { id: camera.id } })).status === "OK",
+);
+
+// 11. Vision config contract.
 const config = await getVisionConfig();
 const tableCount = config.cameras.reduce((total, cam) => total + cam.tables.length, 0);
 check("vision config lists all 11 tables", tableCount === 11, `tables=${tableCount}`);

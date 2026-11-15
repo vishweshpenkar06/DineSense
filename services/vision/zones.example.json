@@ -1,0 +1,21 @@
+{
+  "settings": {
+    "SEATED_CONFIRM_S": 20,
+    "EMPTY_CONFIRM_S": 60
+  },
+  "cameras": [
+    {
+      "id": "replace-with-a-real-camera-uuid",
+      "name": "Ground camera",
+      "rtsp_url": "rtsp://user:password@192.168.1.50:554/stream1",
+      "tables": [
+        {
+          "id": "replace-with-a-real-table-uuid",
+          "label": "G1",
+          "polygon": [[0.05, 0.08], [0.33, 0.08], [0.33, 0.44], [0.05, 0.44]],
+          "muted_until": null
+        }
+      ]
+    }
+  ]
+}

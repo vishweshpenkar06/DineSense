@@ -308,6 +308,7 @@ export default function DevConsolePage() {
   }
 
   const camerasReported = snapshot.cameras.some((camera) => camera.status !== "UNKNOWN");
+  const offlineCameras = snapshot.cameras.filter((camera) => camera.status === "OFFLINE");
   const waitingTables = snapshot.tables.filter((table) => table.state === "needs_order");
 
   return (
@@ -348,10 +349,14 @@ export default function DevConsolePage() {
         </div>
       ) : null}
 
-      {!camerasReported ? (
+      {offlineCameras.length > 0 ? (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          No camera heartbeat yet — vision service arrives in Phase 2. Use Sit / Leave below to
-          drive tables by hand.
+          Camera offline ({offlineCameras.map((camera) => camera.name).join(", ")}) — set tables
+          manually until the stream is back.
+        </div>
+      ) : !camerasReported ? (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          No camera heartbeat yet — start the vision service or use Sit / Leave below.
         </div>
       ) : null}
 

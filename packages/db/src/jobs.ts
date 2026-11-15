@@ -145,9 +145,30 @@ export async function processTaskAlerts(now = new Date()): Promise<TaskAlertResu
   return { escalated: escalated.count, realerted: realerted.count, woken: woken.count };
 }
 
+export const CAMERA_OFFLINE_AFTER_MS = 30_000;
+
+export async function processCameraHealth(now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - CAMERA_OFFLINE_AFTER_MS);
+  const stale = await prisma.camera.updateMany({
+    where: {
+      status: { not: "OFFLINE" },
+      OR: [
+        { lastHeartbeatAt: { lt: cutoff } },
+        { lastHeartbeatAt: null, createdAt: { lt: cutoff } },
+      ],
+    },
+    data: { status: "OFFLINE" },
+  });
+  if (stale.count > 0) {
+    await notify("camera.status", { offline: stale.count });
+  }
+  return stale.count;
+}
+
 export async function workerTick(now = new Date()): Promise<void> {
   await processDueTimers(now);
   await processAbandoned(now);
   await processTaskAlerts(now);
+  await processCameraHealth(now);
   await writeInternalSetting("_worker_last_tick", { at: now.toISOString() });
 }

@@ -63,6 +63,39 @@ services:
         condition: service_completed_successfully
     command: ["npm", "run", "start", "-w", "@dinesense/worker"]
 
+  vision:
+    image: dinesense-vision:local
+    build:
+      context: ./services/vision
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: "http://web:3000"
+      VISION_SHARED_SECRET: "${VISION_SHARED_SECRET:-dev-vision-secret}"
+      ZONES_FILE: "/data/zones.json"
+      TUNING_LOG_PATH: "/data/tuning.csv"
+      VISION_DEMO: "${VISION_DEMO:-false}"
+      VISION_FORCE_FILE: "${VISION_FORCE_FILE:-false}"
+      YOLO_MODEL: "${YOLO_MODEL:-yolo11n.pt}"
+      YOLO_CONF: "${YOLO_CONF:-0.35}"
+      SNAPSHOT_FPS: "${SNAPSHOT_FPS:-1}"
+    volumes:
+      - ./services/vision/demo:/data
+    ports:
+      - "127.0.0.1:8100:8100"
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   caddy:
     image: docker.io/library/caddy:2-alpine
     restart: unless-stopped
