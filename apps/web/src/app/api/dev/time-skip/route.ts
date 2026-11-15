@@ -46,12 +46,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
+    const tasks = await prisma.task.findMany({
+      where: { status: { in: ["OPEN", "ACK", "SNOOZED"] } },
+      select: { id: true, createdAt: true, lastAlertAt: true, snoozedUntil: true },
+    });
+    for (const task of tasks) {
+      await prisma.task.update({
+        where: { id: task.id },
+        data: {
+          createdAt: new Date(task.createdAt.getTime() - shiftMs),
+          lastAlertAt: new Date(task.lastAlertAt.getTime() - shiftMs),
+          snoozedUntil: task.snoozedUntil
+            ? new Date(task.snoozedUntil.getTime() - shiftMs)
+            : null,
+        },
+      });
+    }
+
     await notify("table.updated", { reason: "time-skip", seconds: body.seconds });
+    await notify("task.updated", { reason: "time-skip", seconds: body.seconds });
 
     return ok({
       ok: true,
       shiftedDeadlines: sessions.length,
       shiftedEmpty: emptySessions.length,
+      shiftedTasks: tasks.length,
       seconds: body.seconds,
     });
   } catch (error) {

@@ -132,6 +132,31 @@ start and end; menu/zone/table seed data is untouched.
 6. **Mute camera** suppresses occupancy for 5 minutes.
 7. **Manual override** sets any state and writes an audit row.
 
+## Manual verification (Phase 1)
+
+Use this list at handover. Reset by setting every table to `free` in the dev console.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Seat G3 | Amber card, `auto-alert 3:00` counting down |
+| 2 | Press `−180s`, wait ≤5s | Full-width red "Waiter alert · Table G3 (Ground Floor) is waiting to order" banner, G3 red, one P2 task |
+| 3 | Press Acknowledge | Task becomes `ack` and stays visible until an order exists |
+| 4 | Seat F2 and press Test order before its timer ends | Blue `Ordered`, no needs_order task; a later `−180s` never creates one |
+| 5 | Snooze a needs_order task, then `−300s` | Task disappears during snooze, then returns as `open` |
+| 6 | Press `−120s` on an open task | Task escalates (red task card in the console, `escalatedAt` set) |
+| 7 | Seat G5 then press Table left; `−60s` | Table returns to green, visit closed as abandoned, its task cancelled |
+| 8 | Order at G4, press Table left, `−60s` | Table stays `Ordered` — camera never frees an unpaid visit |
+| 9 | Mute G1, press Someone sat; Unmute, press Again | Stays free while muted, becomes occupied after unmute |
+| 10 | Manual override to `needs_cleaning` then manual `free` | State changes; the manual action is audited |
+| 11 | Press Test order twice | KOT increments (1, 2, …), ticket list shows both |
+| 12 | `docker compose restart worker` while a timer counts | The alert still fires exactly once after restart |
+| 13 | `docker compose down && docker compose up -d` | All data survives; the login and open visits are still there |
+| 14 | `curl localhost:3000/api/health` | `database.ok=true`, `worker.healthy=true` |
+
+The Phase 1 dev console has **no sound or vibration** — that arrives with the waiter PWA in
+Phase 3. The alert here is the red banner, red table card and the task. `docker compose
+logs -f worker` shows a tick failure if anything is wrong.
+
 ## API surface (Phase 1)
 
 - `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me`

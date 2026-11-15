@@ -308,6 +308,7 @@ export default function DevConsolePage() {
   }
 
   const camerasReported = snapshot.cameras.some((camera) => camera.status !== "UNKNOWN");
+  const waitingTables = snapshot.tables.filter((table) => table.state === "needs_order");
 
   return (
     <main className="mx-auto max-w-7xl space-y-5 px-4 py-6">
@@ -351,6 +352,19 @@ export default function DevConsolePage() {
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
           No camera heartbeat yet — vision service arrives in Phase 2. Use Sit / Leave below to
           drive tables by hand.
+        </div>
+      ) : null}
+
+      {waitingTables.length > 0 ? (
+        <div className="animate-pulse rounded-xl border-2 border-red-500 bg-red-500/15 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-red-300">
+            Waiter alert
+          </p>
+          <p className="mt-1 text-lg font-semibold text-white">
+            {waitingTables
+              .map((table) => `Table ${table.label} (${table.zone.name}) is waiting to order`)
+              .join(" · ")}
+          </p>
         </div>
       ) : null}
 
