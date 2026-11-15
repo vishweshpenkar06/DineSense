@@ -3,14 +3,14 @@
 Local-first restaurant operations for a small two-floor Indo-Chinese restaurant.
 One mini PC, no internet required, phones on the LAN.
 
-**Status: Phase 3 — Core + Vision + Staff Apps.** The engine, the Python vision
-service, the waiter and chef PWAs, LAN HTTPS, sound/wake lock, the offline order
-queue and the kitchen lifecycle are built and tested. Reception/billing, admin and
-the setup wizard are later phases.
+**Status: Phase 4 — Reception & Billing.** The engine, vision, waiter/chef PWAs,
+LAN HTTPS, the offline queue, the kitchen lifecycle and the receptionist billing
+workspace (bills, tax, split payments, printing, voids, reopen) are built and
+tested. Admin and the setup wizard are later phases.
 
 ---
 
-## What is built (Phases 1–3)
+## What is built (Phases 1–4)
 
 - Full Prisma data model for the whole product (§9 of the masterplan) with one
   migration, including a partial unique index that enforces one open visit per table.
@@ -51,6 +51,16 @@ the setup wizard are later phases.
   bill requests.
 - **PWA shell + HTTPS:** manifest, icons, service worker, standalone install, Caddy
   with an internal CA, root-certificate export script and device install docs.
+- **Reception workspace** (`/reception`): open visits with running totals, bill
+  requests and escalated-waiter flags, bill screen, item voids, extras, fixed/percent
+  discounts, split payments, voids and admin reopen.
+- **Billing engine:** snapshotted per-floor prices, zone surcharge rules, inclusive
+  or exclusive tax with CGST/SGST, round-off to the rupee, per-year sequential bill
+  numbers that are never reused, payment settlement, and audit logs for every
+  override.
+- **Printing:** browser print layouts for 80 mm thermal and A4 with restaurant
+  profile, GSTIN, tax lines, payments and footer.
+- **Dev runtime reset** (`POST /api/dev/reset`, admin + dev flag) for demos and E2E.
 
 ### Acceptance covered by `npm run acceptance`
 
@@ -90,17 +100,41 @@ reports `degraded` when it cannot keep up.
 
 ### Phase 3 acceptance (staff apps)
 
-- `npm run acceptance`: **61/61** checks, including the full kitchen lifecycle,
-  cancellation rules, takeaway, moving tables, stock and floor pricing.
-- `npm run test:e2e`: **3/3** Playwright tests:
+- `npm run acceptance`: **81/81** checks across Phases 1–4 (kitchen, takeaway,
+  stock, bills, tax, payments, voids, reopen).
+- `npm run test:e2e`: **4/4** Playwright tests:
   1. waiter seats G3 → orders → chef starts/readies → waiter serves → requests bill,
      across two independent browser contexts;
   2. the waiter phone goes offline mid-order, the order is queued, and after
      reconnecting exactly one ticket is created for G5;
-  3. manifest, icons and the service worker are served and registered.
-- HTTPS verified end-to-end through Caddy's internal CA (`https://localhost`),
-  including staff login; the camera proxy returns `image/jpeg` for staff and `401`
-  for anonymous callers.
+  3. manifest, icons and the service worker are served and registered;
+  4. reception adds an extra, a 10% discount, splits cash/UPI payment and checks the
+     80 mm/A4 print widths and content.
+- HTTPS verified end-to-end through Caddy's internal CA, including staff login; the
+  camera proxy returns `image/jpeg` for staff and `401` for anonymous callers.
+
+### Phase 4 acceptance (billing)
+
+Hand-calculated example (ground floor, 5% exclusive tax, 10% discount):
+
+```
+2 × Veg Hakka Noodles Half @ ₹90      ₹180.00
+2 × water bottles @ ₹20                ₹40.00
+10% discount                          −₹18.00
+taxable                                ₹202.00
+CGST 2.5% + SGST 2.5%                   ₹10.10
+unrounded total                        ₹212.10
+round off                              −₹0.10
+TOTAL                                  ₹212.00
+split: cash ₹112.00 + UPI ₹100.00
+```
+
+The acceptance script verifies every paise, the tax split, split payments, the
+bill number format, `needs_cleaning` + cleaning task after payment, void number
+retention, admin reopen with payment reversal, and inclusive tax
+(`₹400` inclusive at 5% → taxable `₹380.95`, tax `₹19.05`, total unchanged).
+Physical thermal/A4 paper was not available; the print CSS widths and content are
+verified headlessly and need a manual check on the owner's printer.
 
 Physical phones/tablets were not available; the two-device flow used two independent
 browser contexts, and network loss used Chromium's offline mode. Install the CA and
@@ -173,6 +207,7 @@ blocks device-to-device traffic, use a dedicated staff router/AP.
 |---|---|
 | Waiter | `/waiter` |
 | Chef | `/chef` |
+| Receptionist | `/reception` |
 | Dev console (admin) | `/dev` |
 
 Seed credentials (development only):
@@ -205,13 +240,14 @@ npm run dev:web               # terminal 2
 ```bash
 npm run test:core             # pure domain tests (no DB)
 npm run typecheck             # all workspaces
-npm run acceptance            # needs migrated + seeded Postgres (61 checks)
-npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000
+npm run acceptance            # needs migrated + seeded Postgres (81 checks)
+npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000 (4 tests)
 docker compose run --rm --no-deps vision pytest   # 36 vision tests
 ```
 
 For deterministic E2E runs, stop the demo vision service first
 (`docker compose stop vision`) so the video does not change table states mid-test.
+The Playwright setup calls the admin-only `POST /api/dev/reset` before each test.
 
 `npm run acceptance` exercises the engine against the real database and spawns a
 fresh Node process for the “worker restart” case. It resets runtime rows at the
@@ -257,6 +293,25 @@ start and end; menu/zone/table seed data is untouched.
 10. **Cameras:** `/waiter/cameras` shows the annotated vision feed per floor and an
     offline notice.
 
+## Reception walkthrough
+
+1. Sign in with PIN `3333`; you land on `/reception`.
+2. The left column lists open visits with running totals, **Bill requested** and
+   **Waiter not responding** flags. Escalated waiter tasks also appear in a red
+   banner.
+3. Select a table. The bill gets its sequential number, the items, extras, discount,
+   tax lines, round-off and total.
+4. Add **Packaged Water** with one tap, add a fixed or percent discount, and void a
+   line item with a reason if needed.
+5. Split the payment across cash/UPI/card (overpayment shows change), then
+   **Take payment & close**. The bill becomes PAID and the table moves to
+   needs_cleaning.
+6. Print 80 mm or A4. Void an open bill, or reopen a paid bill as admin (payments are
+   reversed and recorded in the audit log).
+7. Tax is 0 until the owner sets `TAX_RATE_PERCENT` / `TAX_MODE` in settings (the
+   admin UI arrives in Phase 5); the bill engine supports both exclusive and
+   inclusive GST.
+
 ## Manual verification (Phase 1)
 
 Use this list at handover. Reset by setting every table to `free` in the dev console.
@@ -301,6 +356,21 @@ logs -f worker` shows a tick failure if anything is wrong.
 | A13 | Cameras tab | Annotated JPEG; offline notice when vision stops |
 | A14 | Install over HTTPS on a phone | Standalone icon, no browser chrome |
 
+### Reception/billing verification (Phase 4)
+
+| # | Do this | Expect |
+|---|---|---|
+| B1 | Waiter seats G3 and orders; reception opens G3 | Sequential `DS-<year>-0000xx` number, exact items |
+| B2 | Add two waters and a 10% discount | Extras/discount update the totals |
+| B3 | Set 5% exclusive tax (settings) and reopen the bill | CGST/SGST split, round-off line |
+| B4 | Pay cash ₹112 + UPI ₹100 (hand example) | PAID, change/rounding correct |
+| B5 | Check the waiter board | G3 becomes needs_cleaning with a cleaning task |
+| B6 | Print 80 mm and A4 | Bill number, items, tax, total, GSTIN, footer |
+| B7 | Void an open bill with a reason | VOID; number retained; table free |
+| B8 | Admin reopens a paid bill | OPEN; payments reversed and audited; bill requested |
+| B9 | Void an item after Start with a reason | Item struck off, totals recalculated |
+| B10 | Reception list | Running totals + bill-request/escalation flags |
+
 ### Vision verification
 
 | # | Do this | Expect |
@@ -313,7 +383,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 | V6 | Open `http://127.0.0.1:8100/health` | Per-camera status, FPS, queue and config source |
 | V7 | Open `http://127.0.0.1:8100/snapshot/<camera_id>.jpg` | Annotated zones (green/red) and FPS header |
 
-## API surface (Phases 1–3)
+## API surface (Phases 1–4)
 
 - `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me`
 - `GET /api/snapshot` · `GET /api/stream` (SSE, role-filtered)
@@ -329,11 +399,15 @@ logs -f worker` shows a tick failure if anything is wrong.
 - Visits: `POST /api/sessions` (takeaway) · `POST /api/sessions/:id/request-bill` ·
   `POST /api/sessions/:id/move` · `POST /api/sessions/:id/served` ·
   `GET /api/camera/:id/snapshot.jpg` (staff proxy)
+- Billing: `GET /api/bills/open` · `GET /api/bills/:sessionId` ·
+  `POST /api/bills/:sessionId/adjustments` (add/remove) ·
+  `POST /api/bills/:sessionId/pay` · `POST /api/bills/:sessionId/void` ·
+  `POST /api/bills/:sessionId/reopen` (admin)
 - Vision service (inside the LAN / bound to 127.0.0.1: `8100`): `GET /health`,
   `GET /snapshot/{camera_id}.jpg`
 - Dev-only: `POST /api/dev/simulate` · `POST /api/dev/order` · `POST /api/dev/time-skip` · `GET /api/dev/events`
 
-## Assumptions and defaults (Phases 1–3)
+## Assumptions and defaults (Phases 1–4)
 
 - **Vision debounce lives in the vision service**, so an incoming `occupied`/`empty`
   event is treated as already confirmed. The app additionally waits
@@ -374,6 +448,24 @@ logs -f worker` shows a tick failure if anything is wrong.
 - **E2E coverage:** the two-device flow uses two browser contexts and Chromium
   offline mode, not physical phones; the camera tab depends on the vision service
   (demo videos in this repo).
+- **Bill numbers** are allocated on the first time a bill is opened (not when the
+  visit starts) from a per-year `BillCounter`, formatted `DS-<year>-<6 digits>`.
+  Voided bills keep their number; the counter never goes backwards.
+- **Tax** defaults to 0/exclusive. Settings: `TAX_RATE_PERCENT` (0–100) and
+  `TAX_MODE` (`exclusive`/`inclusive`). Inclusive bills keep the customer total and
+  extract the tax; CGST is the floor half and SGST the remainder.
+- **Discounts:** percent discounts apply to the item subtotal and are recomputed if
+  items change; fixed discounts are stored in paise. Extras/discounts are audited.
+- **Payments:** PAID when the sum of split payments is at least the total; change is
+  displayed. A paid visit closes and the table goes to needs_cleaning.
+- **Voids/reopen:** void only for OPEN bills (reception/admin, reason required) and
+  frees the table; reopen is admin-only for PAID bills, reverses the recorded
+  payments (kept in the audit log), reopens the visit and asks for the bill again.
+  Reopen is refused if the table has been reseated.
+- **Printing:** browser print with 80 mm/A4 CSS layouts; no ESC/POS integration in
+  v1. Verify the paper layout on the owner's printer at handover.
+- **Reception list** includes every open visit, including tables with no orders;
+  takeaway bills appear as “Parcel” with no table.
 - **Manual override** changes the table state; setting a table to `free` voids the
   open visit and cancels its tasks, and the action is audited.
 - **Takeaway ordering** is intentionally rejected until Phase 3 introduces the
@@ -387,5 +479,4 @@ logs -f worker` shows a tick failure if anything is wrong.
 
 ## Not built yet
 
-Phase 4 receptionist + billing/payments/printing, Phase 5 admin, Phase 6 camera
-calibration/admin review, Phase 7 productization.
+Phase 5 admin, Phase 6 camera calibration/admin review, Phase 7 productization.

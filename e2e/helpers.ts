@@ -14,6 +14,8 @@ export async function loginAdminApi(request: APIRequestContext): Promise<void> {
 }
 
 export async function resetTables(request: APIRequestContext): Promise<void> {
+  const reset = await request.post("/api/dev/reset");
+  if (reset.ok()) return;
   const response = await request.get("/api/snapshot");
   expect(response.ok()).toBeTruthy();
   const snapshot = (await response.json()) as {

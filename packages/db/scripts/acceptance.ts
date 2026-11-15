@@ -3,8 +3,15 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { closeNotifyPool, prisma } from "../src";
 import {
+  addBillAdjustment,
+  getBillView,
   getKitchenTickets,
   getMenuForZone,
+  getOpenBills,
+  payBill,
+  removeBillAdjustment,
+  reopenBill,
+  voidBill,
   getVisionConfig,
   loadSettings,
   moveSession,
@@ -545,6 +552,204 @@ for (const category of restoredMenu.categories) {
 }
 check("restocking makes the variant orderable again", restoredVariant);
 
+// ---------------------------------------------------------------------------
+// Phase 4: hand-calculated bills, tax, split payments, void and reopen.
+// ---------------------------------------------------------------------------
+const halfNoodles = await prisma.menuVariant.findFirstOrThrow({
+  where: {
+    item: { name: "Veg Hakka Noodles" },
+    label: "Half",
+    prices: { some: { zoneId: ground.id } },
+  },
+  include: { prices: { where: { zoneId: ground.id } } },
+});
+const groundHalfPrice = halfNoodles.prices[0]?.pricePaise ?? 9000;
+
+async function setTax(rate: number, mode: "exclusive" | "inclusive") {
+  await prisma.setting.upsert({
+    where: { key: "TAX_RATE_PERCENT" },
+    create: { key: "TAX_RATE_PERCENT", value: rate },
+    update: { value: rate },
+  });
+  await prisma.setting.upsert({
+    where: { key: "TAX_MODE" },
+    create: { key: "TAX_MODE", value: mode },
+    update: { value: mode },
+  });
+}
+
+await setTax(5, "exclusive");
+await resetRuntime();
+await sim("occupied");
+const paidOrder = await placeOrder({
+  tableId: tableId,
+  items: [{ variantId: halfNoodles.id, qty: 2 }],
+  clientKey: randomUUID(),
+});
+const paidSession = await openSession();
+if (!paidSession) throw new Error("billing test session missing");
+
+const opened = await getBillView(paidSession.id);
+check("opening a bill allocates a sequential bill number", /^DS-\d{4}-\d{6}$/.test(opened.bill?.billNumber ?? ""), opened.bill?.billNumber ?? "none");
+check(
+  "subtotal uses the snapshotted order price",
+  opened.draft.subtotalPaise === 2 * groundHalfPrice,
+  `subtotal=${opened.draft.subtotalPaise}`,
+);
+
+await addBillAdjustment({
+  sessionId: paidSession.id,
+  kind: "EXTRA",
+  label: "Packaged Water",
+  amountPaise: 2000,
+  actorId: receptionUser.id,
+});
+await addBillAdjustment({
+  sessionId: paidSession.id,
+  kind: "EXTRA",
+  label: "Packaged Water",
+  amountPaise: 2000,
+  actorId: receptionUser.id,
+});
+const removable = await addBillAdjustment({
+  sessionId: paidSession.id,
+  kind: "EXTRA",
+  label: "Temporary extra",
+  amountPaise: 5000,
+  actorId: receptionUser.id,
+});
+const removableId = removable.bill?.adjustments.find((adjustment) => adjustment.label === "Temporary extra")?.id;
+if (removableId) {
+  await removeBillAdjustment({ sessionId: paidSession.id, adjustmentId: removableId, actorId: receptionUser.id });
+}
+const discounted = await addBillAdjustment({
+  sessionId: paidSession.id,
+  kind: "DISCOUNT",
+  percent: 10,
+  actorId: receptionUser.id,
+});
+check("extras and the removed extra are correct", discounted.draft.extrasPaise === 4000, `extras=${discounted.draft.extrasPaise}`);
+
+const expectedSubtotal = 2 * groundHalfPrice;
+const expectedDiscount = Math.round(expectedSubtotal * 0.1);
+const expectedBase = expectedSubtotal + 4000 - expectedDiscount;
+const expectedTax = Math.round(expectedBase * 0.05);
+const expectedUnrounded = expectedBase + expectedTax;
+const expectedTotal = Math.round(expectedUnrounded / 100) * 100;
+const expectedRoundOff = expectedTotal - expectedUnrounded;
+check(
+  "hand-calculated bill matches to the paisa",
+  discounted.draft.subtotalPaise === expectedSubtotal &&
+    discounted.draft.discountPaise === expectedDiscount &&
+    discounted.draft.taxableAmountPaise === expectedBase &&
+    discounted.draft.taxPaise === expectedTax &&
+    discounted.draft.cgstPaise === Math.floor(expectedTax / 2) &&
+    discounted.draft.sgstPaise === expectedTax - Math.floor(expectedTax / 2) &&
+    discounted.draft.roundOffPaise === expectedRoundOff &&
+    discounted.draft.totalPaise === expectedTotal,
+  `subtotal=${discounted.draft.subtotalPaise} discount=${discounted.draft.discountPaise} tax=${discounted.draft.taxPaise} total=${discounted.draft.totalPaise}`,
+);
+check(
+  "10% discount and 5% exclusive tax match the example",
+  expectedSubtotal === 18000 &&
+    expectedDiscount === 1800 &&
+    expectedTax === 1010 &&
+    expectedTotal === 21200 &&
+    expectedRoundOff === -10,
+  `${expectedSubtotal}/${expectedDiscount}/${expectedTax}/${expectedTotal}/${expectedRoundOff}`,
+);
+
+const cashPart = 11200;
+const upiPart = expectedTotal - cashPart;
+const paid = await payBill({
+  sessionId: paidSession.id,
+  payments: [
+    { method: "CASH", amountPaise: cashPart },
+    { method: "UPI", amountPaise: upiPart },
+  ],
+  actorId: receptionUser.id,
+});
+const paidTable = await tableRow();
+const closedPaid = await prisma.session.findUniqueOrThrow({ where: { id: paidSession.id } });
+const cleanTask = await prisma.task.findFirst({ where: { sessionId: paidSession.id, type: "clean_table" } });
+check("split cash/UPI payments mark the bill paid", paid.bill.bill?.status === "PAID" && paid.changePaise === 0);
+check("paying closes the visit with reason PAID", closedPaid.closeReason === "PAID" && closedPaid.closedAt !== null);
+check("paying moves the table to needs_cleaning", paidTable.state === "needs_cleaning");
+check("paying creates the cleaning task", cleanTask?.status === "OPEN");
+check("paid visits leave the open-bills list", !(await getOpenBills()).some((row) => row.sessionId === paidSession.id));
+check("payments are recorded separately", paid.bill.bill?.payments.length === 2);
+
+await resetRuntime();
+await sim("occupied");
+const voidOrder = await placeOrder({
+  tableId: tableId,
+  items: [{ variantId: halfNoodles.id, qty: 1 }],
+  clientKey: randomUUID(),
+});
+const voidSession = await openSession();
+if (!voidSession) throw new Error("void test session missing");
+const voidView = await getBillView(voidSession.id);
+const voidNumber = voidView.bill?.billNumber;
+await voidBill({ sessionId: voidSession.id, reason: "wrong table", actorId: receptionUser.id });
+const voidedBill = await prisma.bill.findFirstOrThrow({ where: { sessionId: voidSession.id } });
+const voidedSession = await prisma.session.findUniqueOrThrow({ where: { id: voidSession.id } });
+const voidedTable = await tableRow();
+check("voiding keeps the bill number", voidedBill.status === "VOID" && voidedBill.billNumber === voidNumber);
+check("voiding closes the visit and frees the table", voidedSession.closeReason === "VOID" && voidedTable.state === "free");
+
+await resetRuntime();
+await sim("occupied");
+const reopenOrder = await placeOrder({
+  tableId: tableId,
+  items: [{ variantId: halfNoodles.id, qty: 1 }],
+  clientKey: randomUUID(),
+});
+const reopenSession = await openSession();
+if (!reopenSession) throw new Error("reopen test session missing");
+const reopenOpened = await getBillView(reopenSession.id);
+const reopenTotal = reopenOpened.draft.totalPaise;
+const paidBeforeReopen = await payBill({
+  sessionId: reopenSession.id,
+  payments: [{ method: "CARD", amountPaise: reopenTotal }],
+  actorId: receptionUser.id,
+});
+check("card-only payment works", paidBeforeReopen.bill.bill?.status === "PAID");
+const reopened = await reopenBill({
+  sessionId: reopenSession.id,
+  reason: "wrong payment mode",
+  actorId: adminUser.id,
+});
+const reopenedSession = await prisma.session.findUniqueOrThrow({ where: { id: reopenSession.id } });
+const reopenedTable = await tableRow();
+check("admin can reopen a paid bill", reopened.bill?.status === "OPEN");
+check("reopening reverses the payments", (reopened.bill?.payments.length ?? 0) === 0);
+check("reopening reopens the visit", reopenedSession.closedAt === null && reopenedSession.closeReason === null);
+check("reopening puts the table back to bill_requested", reopenedTable.state === "bill_requested");
+
+await setTax(5, "inclusive");
+await resetRuntime();
+const f2 = await prisma.diningTable.findFirstOrThrow({ where: { label: "F2" } });
+await setTableStateManually({ tableId: f2.id, target: "occupied", actorId: waiterUser.id });
+const f2Session = await prisma.session.findFirstOrThrow({ where: { tableId: f2.id, closedAt: null } });
+await placeOrder({
+  tableId: f2.id,
+  items: [{ variantId: halfNoodles.id, qty: 4 }],
+  clientKey: randomUUID(),
+});
+const inclusiveView = await getBillView(f2Session.id);
+check(
+  "inclusive tax keeps the total and extracts the tax",
+  inclusiveView.taxInclusive &&
+    inclusiveView.draft.totalPaise === 40000 &&
+    inclusiveView.draft.taxableAmountPaise === 38095 &&
+    inclusiveView.draft.taxPaise === 1905 &&
+    inclusiveView.draft.cgstPaise === 952 &&
+    inclusiveView.draft.sgstPaise === 953,
+  `taxable=${inclusiveView.draft.taxableAmountPaise} tax=${inclusiveView.draft.taxPaise} total=${inclusiveView.draft.totalPaise}`,
+);
+check("AC floor prices are used for the inclusive bill", inclusiveView.draft.subtotalPaise === 40000, `subtotal=${inclusiveView.draft.subtotalPaise}`);
+
+await setTax(0, "exclusive");
 await resetRuntime();
 const failed = results.filter((result) => !result.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

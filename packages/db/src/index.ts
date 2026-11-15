@@ -7,5 +7,7 @@ export * from "./engine";
 export * from "./jobs";
 export * from "./orders";
 export * from "./service";
+export * from "./billing";
+export * from "./dev";
 export * from "./snapshot";
 export * from "./vision";

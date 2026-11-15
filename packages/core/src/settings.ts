@@ -1,3 +1,5 @@
+export type TaxMode = "exclusive" | "inclusive";
+
 export type Settings = {
   DECIDE_WINDOW_S: number;
   SEATED_CONFIRM_S: number;
@@ -9,6 +11,9 @@ export type Settings = {
   TICKET_AMBER_S: number;
   TICKET_RED_S: number;
   BUSINESS_DAY_START: string;
+  TAX_RATE_PERCENT: number;
+  TAX_MODE: TaxMode;
+  BILL_NUMBER_PREFIX: string;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +27,9 @@ export const DEFAULT_SETTINGS: Settings = {
   TICKET_AMBER_S: 600,
   TICKET_RED_S: 1200,
   BUSINESS_DAY_START: "05:00",
+  TAX_RATE_PERCENT: 0,
+  TAX_MODE: "exclusive",
+  BILL_NUMBER_PREFIX: "DS",
 };
 
 const NUMERIC_KEYS = [
@@ -44,6 +52,23 @@ export function mergeSettings(raw: Record<string, unknown> | null | undefined): 
     const value = raw[key];
     const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
     if (Number.isFinite(parsed) && parsed > 0) merged[key] = Math.floor(parsed);
+  }
+
+  const taxRate = raw.TAX_RATE_PERCENT;
+  const parsedTax =
+    typeof taxRate === "number" ? taxRate : typeof taxRate === "string" ? Number(taxRate) : NaN;
+  if (Number.isFinite(parsedTax) && parsedTax >= 0 && parsedTax <= 100) {
+    merged.TAX_RATE_PERCENT = Math.round(parsedTax * 100) / 100;
+  }
+
+  const taxMode = raw.TAX_MODE;
+  if (taxMode === "inclusive" || taxMode === "exclusive") {
+    merged.TAX_MODE = taxMode;
+  }
+
+  const prefix = raw.BILL_NUMBER_PREFIX;
+  if (typeof prefix === "string" && /^[A-Za-z0-9]{1,8}$/.test(prefix)) {
+    merged.BILL_NUMBER_PREFIX = prefix.toUpperCase();
   }
 
   const start = raw.BUSINESS_DAY_START;

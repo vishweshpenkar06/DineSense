@@ -1,3 +1,5 @@
+import type { BillTotals } from "./billing";
+
 import type { StaffRole, TableState, TaskStatus, TaskType } from "./types";
 
 export type SnapshotTable = {
@@ -189,4 +191,91 @@ export type OrderContextResponse = {
     decisionDeadline: string | null;
   } | null;
   menu: MenuResponse;
+};
+
+export type BillLineDto = {
+  id: string;
+  orderId: string;
+  kotNumber: number;
+  name: string;
+  variant: string;
+  qty: number;
+  unitPricePaise: number;
+  lineTotalPaise: number;
+  note: string | null;
+  orderStatus: "PLACED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
+};
+
+export type BillAdjustmentDto = {
+  id: string;
+  kind: "EXTRA" | "DISCOUNT";
+  label: string;
+  amountPaise: number;
+  percent: number | null;
+  createdAt: string;
+};
+
+export type BillPaymentDto = {
+  id: string;
+  method: "CASH" | "UPI" | "CARD";
+  amountPaise: number;
+  createdAt: string;
+};
+
+export type BillRecordDto = {
+  id: string;
+  billNumber: string;
+  status: "OPEN" | "PAID" | "VOID";
+  taxRatePercent: number;
+  taxInclusive: boolean;
+  paidAt: string | null;
+  totals: BillTotals;
+  adjustments: BillAdjustmentDto[];
+  payments: BillPaymentDto[];
+};
+
+export type QuickExtraDto = {
+  variantId: string;
+  name: string;
+  variant: string;
+  pricePaise: number;
+};
+
+export type BillViewDto = {
+  sessionId: string;
+  kind: "DINE_IN" | "TAKEAWAY";
+  state: string;
+  openedAt: string;
+  closedAt: string | null;
+  table: { id: string; label: string; zoneName: string; isAc: boolean } | null;
+  items: BillLineDto[];
+  bill: BillRecordDto | null;
+  draft: BillTotals;
+  taxRatePercent: number;
+  taxInclusive: boolean;
+  billRequested: boolean;
+  quickExtras: QuickExtraDto[];
+  restaurant: {
+    name: string;
+    address: string;
+    phone: string | null;
+    gstin: string | null;
+    billFooter: string | null;
+  };
+};
+
+export type OpenBillRowDto = {
+  sessionId: string;
+  kind: "DINE_IN" | "TAKEAWAY";
+  state: string;
+  tableLabel: string | null;
+  zoneName: string | null;
+  isAc: boolean;
+  openedAt: string;
+  itemCount: number;
+  totalPaise: number;
+  billStatus: "OPEN" | "PAID" | "VOID" | null;
+  billNumber: string | null;
+  billRequested: boolean;
+  escalatedTasks: number;
 };

@@ -1,0 +1,129 @@
+import { describe, expect, it } from "vitest";
+import {
+  calculateBill,
+  formatBillNumber,
+  isBillPaid,
+  paidTotal,
+  percentOf,
+  roundToRupee,
+} from "../billing";
+
+describe("rounding and percentages", () => {
+  it("rounds to the nearest rupee", () => {
+    expect(roundToRupee(32130)).toBe(32100);
+    expect(roundToRupee(32150)).toBe(32200);
+    expect(roundToRupee(34000)).toBe(34000);
+  });
+
+  it("computes percentages in paise", () => {
+    expect(percentOf(18000, 10)).toBe(1800);
+    expect(percentOf(20200, 5)).toBe(1010);
+    expect(percentOf(0, 5)).toBe(0);
+  });
+
+  it("formats bill numbers with six digits", () => {
+    expect(formatBillNumber("DS", 2026, 123)).toBe("DS-2026-000123");
+    expect(formatBillNumber("ds", 2026, 1)).toBe("DS-2026-000001");
+    expect(formatBillNumber("bad prefix!", 2026, 7)).toBe("DS-2026-000007");
+  });
+});
+
+describe("calculateBill", () => {
+  it("hand-calculated ground-floor bill with water and a 10% discount", () => {
+    const totals = calculateBill({
+      items: [
+        { qty: 2, unitPricePaise: 9000 },
+        { qty: 1, unitPricePaise: 0, cancelled: true },
+      ],
+      extrasPaise: 4000,
+      discountPaise: percentOf(18000, 10),
+      taxRatePercent: 5,
+      taxInclusive: false,
+    });
+    expect(totals).toEqual({
+      subtotalPaise: 18000,
+      extrasPaise: 4000,
+      surchargePaise: 0,
+      discountPaise: 1800,
+      taxableAmountPaise: 20200,
+      taxPaise: 1010,
+      cgstPaise: 505,
+      sgstPaise: 505,
+      roundOffPaise: -10,
+      totalPaise: 21200,
+    });
+  });
+
+  it("uses the AC floor's higher snapshotted prices", () => {
+    const totals = calculateBill({
+      items: [{ qty: 2, unitPricePaise: 10000 }],
+      extrasPaise: 4000,
+      discountPaise: 2000,
+      taxRatePercent: 5,
+      taxInclusive: false,
+    });
+    expect(totals.subtotalPaise).toBe(20000);
+    expect(totals.taxableAmountPaise).toBe(22000);
+    expect(totals.taxPaise).toBe(1100);
+    expect(totals.totalPaise).toBe(23100);
+    expect(totals.roundOffPaise).toBe(0);
+  });
+
+  it("handles inclusive tax without changing the customer total", () => {
+    const totals = calculateBill({
+      items: [{ qty: 4, unitPricePaise: 8500 }],
+      taxRatePercent: 5,
+      taxInclusive: true,
+    });
+    expect(totals.subtotalPaise).toBe(34000);
+    expect(totals.taxableAmountPaise).toBe(32381);
+    expect(totals.taxPaise).toBe(1619);
+    expect(totals.cgstPaise).toBe(809);
+    expect(totals.sgstPaise).toBe(810);
+    expect(totals.totalPaise).toBe(34000);
+  });
+
+  it("applies flat and percent zone surcharges", () => {
+    const flat = calculateBill({
+      items: [{ qty: 1, unitPricePaise: 10000 }],
+      surchargeType: "FLAT",
+      surchargeValue: 2000,
+    });
+    expect(flat.surchargePaise).toBe(2000);
+    expect(flat.taxableAmountPaise).toBe(12000);
+
+    const percent = calculateBill({
+      items: [{ qty: 1, unitPricePaise: 10000 }],
+      surchargeType: "PERCENT",
+      surchargeValue: 5,
+    });
+    expect(percent.surchargePaise).toBe(500);
+    expect(percent.taxableAmountPaise).toBe(10500);
+  });
+
+  it("never produces a negative total when the discount is too large", () => {
+    const totals = calculateBill({
+      items: [{ qty: 1, unitPricePaise: 5000 }],
+      discountPaise: 9000,
+    });
+    expect(totals.taxableAmountPaise).toBe(0);
+    expect(totals.totalPaise).toBe(0);
+    expect(totals.discountPaise).toBe(9000);
+  });
+
+  it("zero tax by default", () => {
+    const totals = calculateBill({ items: [{ qty: 3, unitPricePaise: 7000 }] });
+    expect(totals.taxPaise).toBe(0);
+    expect(totals.totalPaise).toBe(21000);
+  });
+});
+
+describe("payments", () => {
+  it("sums split payments and detects settlement", () => {
+    const payments = [{ amountPaise: 11200 }, { amountPaise: 10000 }];
+    expect(paidTotal(payments)).toBe(21200);
+    expect(isBillPaid(payments, 21200)).toBe(true);
+    expect(isBillPaid([{ amountPaise: 10000 }], 21200)).toBe(false);
+    expect(isBillPaid([{ amountPaise: 22000 }], 21200)).toBe(true);
+  });
+});

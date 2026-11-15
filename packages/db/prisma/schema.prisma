@@ -323,6 +323,8 @@ model Bill {
   sgst          Int        @default(0)
   roundOff      Int        @default(0)
   total         Int        @default(0)
+  taxRatePercent Int       @default(0)
+  taxInclusive  Boolean    @default(false)
   status        BillStatus @default(OPEN)
   finalizedById String?
   paidAt        DateTime?
@@ -335,12 +337,19 @@ model Bill {
   payments     Payment[]
 }
 
+model BillCounter {
+  year      Int      @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 model BillAdjustment {
   id          String         @id @default(uuid())
   billId      String
   kind        AdjustmentKind
   label       String
   amountPaise Int
+  percent     Int?
   createdAt   DateTime       @default(now())
 
   bill Bill @relation(fields: [billId], references: [id])

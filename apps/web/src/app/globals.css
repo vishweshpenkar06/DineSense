@@ -25,3 +25,75 @@ button {
   background: rgb(51 65 85);
   border-radius: 9999px;
 }
+
+.bill-print {
+  width: 100%;
+  max-width: 210mm;
+  margin: 0 auto;
+  border-radius: 0.75rem;
+  background: white;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 10mm;
+}
+
+.bill-print table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bill-print th,
+.bill-print td {
+  padding: 2px 0;
+  text-align: left;
+}
+
+.bill-print .amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-print hr {
+  border: 0;
+  border-top: 1px dashed #94a3b8;
+  margin: 6px 0;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .bill-print,
+  .bill-print * {
+    visibility: visible;
+  }
+
+  .bill-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 72mm;
+    max-width: 72mm;
+    padding: 2mm;
+    font-size: 9.5px;
+    border-radius: 0;
+  }
+
+  .bill-print[data-format="a4"] {
+    width: 190mm;
+    max-width: 190mm;
+    padding: 8mm;
+    font-size: 12px;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    margin: 4mm;
+  }
+}
