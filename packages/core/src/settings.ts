@@ -10,6 +10,7 @@ export type Settings = {
   VISION_MUTE_S: number;
   TICKET_AMBER_S: number;
   TICKET_RED_S: number;
+  VISION_EVENT_RETENTION_DAYS: number;
   BUSINESS_DAY_START: string;
   TAX_RATE_PERCENT: number;
   TAX_MODE: TaxMode;
@@ -26,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   VISION_MUTE_S: 300,
   TICKET_AMBER_S: 600,
   TICKET_RED_S: 1200,
+  VISION_EVENT_RETENTION_DAYS: 30,
   BUSINESS_DAY_START: "05:00",
   TAX_RATE_PERCENT: 0,
   TAX_MODE: "exclusive",
@@ -42,6 +44,7 @@ const NUMERIC_KEYS = [
   "VISION_MUTE_S",
   "TICKET_AMBER_S",
   "TICKET_RED_S",
+  "VISION_EVENT_RETENTION_DAYS",
 ] as const;
 
 export function mergeSettings(raw: Record<string, unknown> | null | undefined): Settings {

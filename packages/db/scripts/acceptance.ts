@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   businessDateString,
   businessDayStartFromDate,
+  decryptSecret,
   shiftBusinessDate,
   verifySecret,
   type MenuImportGroup,
@@ -11,18 +12,24 @@ import {
 import { closeNotifyPool, prisma } from "../src";
 import {
   addBillAdjustment,
+  createCamera,
   createStaff,
   createTable,
   createZone,
   deleteCategory,
   deleteItem,
+  deleteCamera,
   deleteTable,
   deleteZone,
+  encryptionKeySource,
+  getAdminCameras,
   getAdminFloors,
   getAdminMenu,
   getBillView,
+  getCameraCalibration,
   getKitchenTickets,
   getMenuForZone,
+  getRecentDetections,
   getOpenBills,
   getReportCsv,
   getReportSummary,
@@ -47,8 +54,10 @@ import {
   setTableStateManually,
   setVariantAvailability,
   setVisionMute,
+  setTableZone,
   startOrder,
   updateAdminSettings,
+  updateCamera,
   updateStaff,
   updateTable,
   createTakeawaySession,
@@ -973,6 +982,94 @@ if (importedAdminCategory) {
 check(
   "admin can delete an imported item and category",
   !(await getAdminMenu()).categories.some((entry) => entry.name === "Acceptance Import"),
+);
+
+// ---------------------------------------------------------------------------
+// Phase 6: camera credentials, active filtering, calibration and detections.
+// ---------------------------------------------------------------------------
+await resetRuntime();
+const cameraUrl = "rtsp://acceptance:secret@10.0.0.99:554/stream";
+const testCamera = await createCamera({
+  name: "Acceptance Camera",
+  zoneId: ground.id,
+  rtspUrl: cameraUrl,
+  actorId: adminUser.id,
+});
+const cameraRow = await prisma.camera.findUniqueOrThrow({ where: { id: testCamera.id } });
+check(
+  "camera RTSP credentials are encrypted at rest",
+  cameraRow.rtspUrlEncrypted !== cameraUrl &&
+    decryptSecret(cameraRow.rtspUrlEncrypted, encryptionKeySource()) === cameraUrl,
+);
+const cameraDto = (await getAdminCameras()).find((camera) => camera.id === testCamera.id);
+check(
+  "the admin camera API never returns the RTSP URL",
+  cameraDto !== undefined &&
+    !Object.prototype.hasOwnProperty.call(cameraDto, "rtspUrl") &&
+    cameraDto.hasRtsp &&
+    cameraDto.active,
+);
+check(
+  "active cameras are published to the vision service",
+  (await getVisionConfig()).cameras.some((camera) => camera.id === testCamera.id),
+);
+await updateCamera({ id: testCamera.id, active: false, actorId: adminUser.id });
+check(
+  "disabled cameras disappear from the vision config",
+  !(await getVisionConfig()).cameras.some((camera) => camera.id === testCamera.id),
+);
+await updateCamera({ id: testCamera.id, active: true, actorId: adminUser.id });
+
+const calibrationTable = await createTable({
+  zoneId: ground.id,
+  label: "CAL1",
+  seats: 2,
+  cameraId: testCamera.id,
+  actorId: adminUser.id,
+});
+const polygon = [
+  [0.1, 0.1],
+  [0.4, 0.1],
+  [0.4, 0.4],
+  [0.1, 0.4],
+];
+await setTableZone({
+  tableId: calibrationTable.id,
+  cameraId: testCamera.id,
+  polygon,
+  actorId: adminUser.id,
+});
+const calibration = await getCameraCalibration(testCamera.id);
+const calibratedTable = calibration.tables.find((table) => table.id === calibrationTable.id);
+check(
+  "calibration saves normalized table polygons",
+  calibratedTable?.polygon?.length === 4 &&
+    calibratedTable.polygon[0]?.[0] === 0.1 &&
+    calibratedTable.cameraId === testCamera.id,
+);
+const visionAfterCalibration = await getVisionConfig();
+const calibratedConfigCamera = visionAfterCalibration.cameras.find(
+  (camera) => camera.id === testCamera.id,
+);
+check(
+  "the vision config receives the calibrated polygon",
+  calibratedConfigCamera?.tables.find((table) => table.id === calibrationTable.id)?.polygon.length === 4,
+);
+
+await sim("occupied");
+const recentDetections = await getRecentDetections({ limit: 5 });
+check(
+  "recent detections are queryable for review",
+  recentDetections.length > 0 && recentDetections.some((event) => event.tableLabel === "G3"),
+  `events=${recentDetections.length}`,
+);
+
+await resetRuntime();
+await deleteTable({ id: calibrationTable.id, actorId: adminUser.id });
+await deleteCamera({ id: testCamera.id, actorId: adminUser.id });
+check(
+  "test camera and table were cleaned up",
+  (await prisma.camera.findUnique({ where: { id: testCamera.id } })) === null,
 );
 
 await resetRuntime();

@@ -17,10 +17,12 @@ export async function GET(
     const { id } = await context.params;
     const cameraId = uuidSchema.parse(id);
     const visionUrl = (process.env.VISION_URL ?? "http://vision:8100").replace(/\/$/, "");
+    const secret = process.env.VISION_SHARED_SECRET ?? "";
 
     const upstream = await fetch(`${visionUrl}/snapshot/${encodeURIComponent(cameraId)}.jpg`, {
       cache: "no-store",
       signal: AbortSignal.timeout(4_000),
+      headers: { authorization: `Bearer ${secret}` },
     }).catch(() => null);
 
     if (!upstream || !upstream.ok) {

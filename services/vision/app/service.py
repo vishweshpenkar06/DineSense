@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import logging
 import os
 import threading
@@ -38,6 +39,7 @@ class VisionService:
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._config_thread: threading.Thread | None = None
+        self._config_refresh = threading.Event()
         self.config_source = "none"
         self.config_error: str | None = None
         self.last_config_at: str | None = None
@@ -56,10 +58,26 @@ class VisionService:
     def _config_loop(self) -> None:
         while not self._stop.is_set():
             interval = max(5.0, self.store.settings().config_poll_s)
-            if self._stop.wait(interval):
+            self._config_refresh.wait(timeout=interval)
+            if self._stop.is_set():
                 return
+            self._config_refresh.clear()
             self._load_config(initial=False)
             self._reconcile()
+
+    def refresh_config(self) -> None:
+        self._config_refresh.set()
+
+    def tuning_rows(self, tail: int) -> dict[str, object]:
+        path = self.env.tuning_log_path
+        if not os.path.exists(path):
+            return {"columns": TuningLogger.HEADER, "rows": []}
+        try:
+            with open(path, newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+        except OSError:
+            return {"columns": TuningLogger.HEADER, "rows": []}
+        return {"columns": TuningLogger.HEADER, "rows": rows[-max(1, tail):]}
 
     def _load_config(self, initial: bool) -> None:
         if self.env.demo or self.env.force_file:
@@ -143,8 +161,8 @@ class VisionService:
                 fresh.start()
                 self.runners[camera.id] = fresh
 
-    def snapshot(self, camera_id: str) -> tuple[bytes, float] | None:
-        return self.snapshots.get(camera_id)
+    def snapshot(self, camera_id: str, kind: str = "annotated") -> tuple[bytes, float] | None:
+        return self.snapshots.get(camera_id, kind)
 
     def health(self) -> dict[str, Any]:
         cameras, _settings = self.store.snapshot()
@@ -183,6 +201,7 @@ class VisionService:
 
     def stop(self) -> None:
         self._stop.set()
+        self._config_refresh.set()
         if self._config_thread is not None:
             self._config_thread.join(timeout=2.0)
         with self._lock:

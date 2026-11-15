@@ -3,15 +3,14 @@
 Local-first restaurant operations for a small two-floor Indo-Chinese restaurant.
 One mini PC, no internet required, phones on the LAN.
 
-**Status: Phase 5 — Admin.** The engine, vision, waiter/chef PWAs, LAN HTTPS, the
-offline queue, the kitchen lifecycle and reception/billing are built. The owner can
-now configure the restaurant (menu/import, floors, tables, staff, settings) and read
-sales/operations reports without touching the database. The setup wizard and
-camera calibration are later phases.
+**Status: Phase 6 — Camera Calibration.** Everything through admin is built, plus
+on-site camera setup: add/test a camera, calibrate table zones by drawing on a raw
+frame, live snapshots, recent-detection review, the tuning log and vision mute.
+The installer/setup wizard is the remaining phase.
 
 ---
 
-## What is built (Phases 1–5)
+## What is built (Phases 1–6)
 
 - Full Prisma data model for the whole product (§9 of the masterplan) with one
   migration, including a partial unique index that enforces one open visit per table.
@@ -71,6 +70,15 @@ camera calibration are later phases.
 - **Admin rules/audit:** every configuration change is audited; items/variants with
   order history are archived instead of deleted; staff can be deactivated; the owner
   cannot deactivate themselves; invalid settings/PINs are rejected.
+- **Camera setup:** add a camera (RTSP encrypted at rest, never returned to the
+  browser), test the stream with a real frame-size/FPS result, disable/re-enable,
+  assign it to a floor and calibrate every table zone by drawing on the live raw
+  frame. The vision service refreshes its config on save.
+- **Camera review:** recent detections table, the per-table tuning CSV viewer, table
+  vision mute controls, active-camera filtering, and 30-day vision-event retention.
+- **Live view:** the annotated JPEG proxy for the waiter camera screen; raw JPEGs are
+  used only by the admin calibration page. Both stay on the LAN and require the
+  shared secret between web and vision.
 
 ### Acceptance covered by `npm run acceptance`
 
@@ -110,9 +118,10 @@ reports `degraded` when it cannot keep up.
 
 ### Phase 3 acceptance (staff apps)
 
-- `npm run acceptance`: **101/101** checks across Phases 1–5 (kitchen, takeaway,
-  stock, bills, tax, payments, voids, reopen, reports, admin CRUD, menu import).
-- `npm run test:e2e`: **5/5** Playwright tests:
+- `npm run acceptance`: **109/109** checks across Phases 1–6 (kitchen, takeaway,
+  stock, bills, tax, payments, voids, reopen, reports, admin CRUD, menu import,
+  camera encryption/active filtering/calibration).
+- `npm run test:e2e`: **6/6** Playwright tests:
   1. waiter seats G3 → orders → chef starts/readies → waiter serves → requests bill,
      across two independent browser contexts;
   2. the waiter phone goes offline mid-order, the order is queued, and after
@@ -121,7 +130,10 @@ reports `degraded` when it cannot keep up.
   4. reception adds an extra, a 10% discount, splits cash/UPI payment and checks the
      80 mm/A4 print widths and content;
   5. the owner changes a timer, adds/removes a table and imports a menu from CSV
-     through `/admin`, then restores the settings and cleans the test rows.
+     through `/admin`, then restores the settings and cleans the test rows;
+  6. the owner opens Cameras, calibrates a table zone by drawing four points on the
+     raw demo frame, verifies the saved polygon and restores it; recent detections
+     and tuning rows are visible.
 - HTTPS verified end-to-end through Caddy's internal CA, including staff login; the
   camera proxy returns `image/jpeg` for staff and `401` for anonymous callers.
 
@@ -147,6 +159,18 @@ retention, admin reopen with payment reversal, and inclusive tax
 (`₹400` inclusive at 5% → taxable `₹380.95`, tax `₹19.05`, total unchanged).
 Physical thermal/A4 paper was not available; the print CSS widths and content are
 verified headlessly and need a manual check on the owner's printer.
+
+### Phase 6 acceptance (cameras)
+
+- Camera CRUD via the admin services: RTSP credentials are encrypted at rest and the
+  admin DTO never includes the URL; active cameras appear in
+  `/api/vision/config`, disabled ones disappear.
+- Calibration saves normalized polygons on the table and the vision config receives
+  them; recent detections are queryable; the test camera/table are cleaned up.
+- The vision service `/test` endpoint opened the demo video and reported
+  `960×540` at 20 fps; a real RTSP camera was not available on this machine.
+- E2E calibration ran against the live demo raw frame and verified/saved/restored a
+  four-point polygon.
 
 ### Phase 5 acceptance (admin)
 
@@ -266,8 +290,8 @@ npm run dev:web               # terminal 2
 ```bash
 npm run test:core             # pure domain tests (no DB)
 npm run typecheck             # all workspaces
-npm run acceptance            # needs migrated + seeded Postgres (81 checks)
-npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000 (4 tests)
+npm run acceptance            # needs migrated + seeded Postgres (109 checks)
+npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000 (6 tests)
 docker compose run --rm --no-deps vision pytest   # 36 vision tests
 ```
 
@@ -353,7 +377,28 @@ start and end; menu/zone/table seed data is untouched.
    password; reset credentials and deactivate people. You cannot deactivate yourself.
 6. **Settings:** timers, tax rate/mode, bill prefix, business-day start and the
    restaurant profile/GSTIN (used on printed bills). Invalid values are rejected.
-7. The dev console remains at `/dev` for simulation and diagnostics.
+7. **Cameras:** add/test a camera, disable/enable it, open **Calibrate** to draw
+   table zones on the live raw frame, mute a table for five minutes, and review the
+   recent detections and tuning CSV (no images).
+8. The dev console remains at `/dev` for simulation and diagnostics.
+
+## Camera setup (non-developer)
+
+1. **Admin → Cameras → Add a camera:** name it, choose its floor, paste the RTSP
+   URL (substream preferred), press **Test connection**. A result such as
+   `OK · 1920×1080 · 15 fps` means the mini PC can read the stream. Save.
+2. The vision service picks up the new camera immediately (the app triggers a config
+   refresh). Wait for a frame, then press **Calibrate**.
+3. Select table G1, click the four corners around the **table and its chairs** on the
+   image, and press **Save zone for G1**. Repeat for every table on that camera.
+   The overlay shows existing zones so you can see what is left.
+4. Use **mute** on a table while staff are cleaning it, **Refresh frame** if the image
+   is stale, and **Recent detections** to confirm people are counted in the right
+   zones. The **Tuning log** shows raw counts and debounced states (never images).
+5. If the floor plan changes, redraw only that table. Saving a zone refreshes the
+   vision service within seconds; the waiter board and alerts use the new polygon.
+6. Budget: once the stream is reachable, 11 zones take about 10–20 minutes. Camera
+   placement tips are in the hardware guide (Phase 7).
 
 ## Manual verification (Phase 1)
 
@@ -429,6 +474,20 @@ logs -f worker` shows a tick failure if anything is wrong.
 | C9 | Set tax 5% exclusive in Settings; print a bill | CGST/SGST/round-off on the bill |
 | C10 | Try a 1s decision window / a 2-digit PIN | Both rejected with a clear message |
 
+### Camera verification (Phase 6)
+
+| # | Do this | Expect |
+|---|---|---|
+| D1 | Add a camera with its RTSP URL and press Test | Dimensions/FPS, or a clear error |
+| D2 | Save and wait for the raw frame | Calibration image appears; camera becomes OK |
+| D3 | Draw and save all 11 table zones | Polygons persist; waiter board reacts to the right zones |
+| D4 | Open Recent detections | Time, camera, table, state, count, confidence |
+| D5 | Open Tuning log | Per-table rows refresh; no images |
+| D6 | Mute a table | Vision stops emitting for it for five minutes |
+| D7 | Disable a camera | It disappears from the vision config; manual table control still works |
+| D8 | Kill the stream and reopen calibration | Clear offline message, not a broken page |
+| D9 | Time a full 11-zone setup | Under 30 minutes excluding camera mounting |
+
 ### Vision verification
 
 | # | Do this | Expect |
@@ -441,7 +500,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 | V6 | Open `http://127.0.0.1:8100/health` | Per-camera status, FPS, queue and config source |
 | V7 | Open `http://127.0.0.1:8100/snapshot/<camera_id>.jpg` | Annotated zones (green/red) and FPS header |
 
-## API surface (Phases 1–5)
+## API surface (Phases 1–6)
 
 - `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me`
 - `GET /api/snapshot` · `GET /api/stream` (SSE, role-filtered)
@@ -467,11 +526,18 @@ logs -f worker` shows a tick failure if anything is wrong.
   `GET/PUT /api/admin/settings` · `PUT /api/admin/restaurant`
 - Reports: `GET /api/reports/summary?preset|from&to` ·
   `GET /api/reports/export.csv?preset|from&to`
-- Vision service (inside the LAN / bound to 127.0.0.1: `8100`): `GET /health`,
-  `GET /snapshot/{camera_id}.jpg`
+- Cameras: `GET/POST/PATCH/DELETE /api/admin/cameras` ·
+  `POST /api/admin/cameras/test` · `GET /api/admin/cameras/:id/frame.jpg` (raw) ·
+  `GET/PUT /api/admin/cameras/:id/calibration` ·
+  `GET /api/admin/vision/events` · `GET /api/admin/vision/tuning` ·
+  `POST /api/admin/vision/refresh`
+- Vision service (inside the LAN / bound to 127.0.0.1: `8100`): `GET /health`
+  (public for the container healthcheck), `GET /snapshot/{camera_id}.jpg`,
+  `GET /frame/{camera_id}.jpg`, `POST /test`, `POST /config/refresh`,
+  `GET /tuning` — all but health require the Bearer `VISION_SHARED_SECRET`
 - Dev-only: `POST /api/dev/simulate` · `POST /api/dev/order` · `POST /api/dev/time-skip` · `GET /api/dev/events`
 
-## Assumptions and defaults (Phases 1–5)
+## Assumptions and defaults (Phases 1–6)
 
 - **Vision debounce lives in the vision service**, so an incoming `occupied`/`empty`
   event is treated as already confirmed. The app additionally waits
@@ -540,8 +606,24 @@ logs -f worker` shows a tick failure if anything is wrong.
   cannot be deleted; items with history are archived.
 - **Floors/tables:** a floor can only be deleted when it has no tables, cameras,
   prices, visits or tasks; tables with history are archived instead of deleted.
-  Cameras are read-only in Phase 5 (assignment only); camera add/test/calibration is
-  Phase 6.
+- **Cameras:** RTSP URLs are AES-GCM encrypted at rest and only decrypted for the
+  vision service; admin responses expose `hasRtsp`, never the URL. A camera belongs
+  to one floor; a table's camera must be on the same floor. Active cameras are
+  published to the vision service, inactive ones are ignored. Camera credentials are
+  sent once from the admin browser to the web app over HTTPS.
+- **Calibration:** polygons are normalized 0–1 around the whole table plus chairs;
+  the admin draws them on the raw (unannotated) frame. Saving a zone/setting or
+  adding a camera triggers a vision config refresh; otherwise the service polls every
+  60s. `VISION_DEMO=true` uses `zones.json` and ignores database camera/zone changes,
+  so calibration is for real-camera mode (`VISION_DEMO=false`).
+- **Vision auth:** the web app calls the vision service with the shared secret; the
+  service is bound to `127.0.0.1:8100`. Only annotated snapshots reach staff phones
+  through the authenticated web proxy; raw frames are admin-only. Frames stay in
+  memory and are never stored.
+- **Camera test:** accepts `rtsp://`, `rtsps://`, `http(s)://` and (demo) `/data/`
+  paths, with a 5s open/read timeout. No video is recorded.
+- **Retention:** vision events and tuning rows are diagnostic data; events are pruned
+  after 30 days by the worker (`VISION_EVENT_RETENTION_DAYS`, default 30).
 - **Staff:** admin accounts need a password (6+); staff use a 4–6 digit PIN; PINs and
   passwords are hashed. The owner cannot deactivate their own account. Staff PINs
   are not required to be globally unique (login checks each active hash); keep them
@@ -565,4 +647,4 @@ logs -f worker` shows a tick failure if anything is wrong.
 
 ## Not built yet
 
-Phase 6 camera calibration/admin review, Phase 7 productization.
+Phase 7 productization (installer, setup wizard, backups, health, docs).

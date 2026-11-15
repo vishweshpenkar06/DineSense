@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  AdminCameraDto,
   AdminFloorsDto,
   AdminMenuDto,
   AdminSettingsDto,
@@ -13,13 +14,14 @@ import { useSnapshotLive } from "@/lib/live";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { CamerasPanel } from "./cameras-panel";
 import { FloorsPanel } from "./floors-panel";
 import { MenuPanel } from "./menu-panel";
 import { SettingsPanel } from "./settings-panel";
 import { StaffPanel } from "./staff-panel";
 import { BTN, BTN_PRIMARY, CARD, duration, money, type Run } from "./ui";
 
-type Tab = "overview" | "menu" | "floors" | "staff" | "settings";
+type Tab = "overview" | "menu" | "floors" | "cameras" | "staff" | "settings";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -27,6 +29,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [menu, setMenu] = useState<AdminMenuDto | null>(null);
   const [floors, setFloors] = useState<AdminFloorsDto | null>(null);
+  const [cameras, setCameras] = useState<AdminCameraDto[]>([]);
   const [staff, setStaff] = useState<AdminStaffDto[]>([]);
   const [settingsData, setSettingsData] = useState<AdminSettingsDto | null>(null);
   const [report, setReport] = useState<ReportSummaryDto | null>(null);
@@ -66,6 +69,16 @@ export default function AdminPage() {
     }
   }, []);
 
+  const loadCameras = useCallback(async () => {
+    try {
+      const data = await getJson<{ cameras: AdminCameraDto[] }>("/api/admin/cameras");
+      setCameras(data.cameras);
+      setError(null);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    }
+  }, []);
+
   const loadStaff = useCallback(async () => {
     try {
       const data = await getJson<{ staff: AdminStaffDto[] }>("/api/admin/staff");
@@ -89,9 +102,10 @@ export default function AdminPage() {
     void loadReport("preset=today");
     void loadMenu();
     void loadFloors();
+    void loadCameras();
     void loadStaff();
     void loadSettings();
-  }, [loadReport, loadMenu, loadFloors, loadStaff, loadSettings]);
+  }, [loadReport, loadMenu, loadFloors, loadCameras, loadStaff, loadSettings]);
 
   const run: Run = useCallback(async (action, success) => {
     setBusy(true);
@@ -164,7 +178,7 @@ export default function AdminPage() {
       </header>
 
       <nav className="flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1">
-        {(["overview", "menu", "floors", "staff", "settings"] as Tab[]).map((entry) => (
+        {(["overview", "menu", "floors", "cameras", "staff", "settings"] as Tab[]).map((entry) => (
           <button
             key={entry}
             type="button"
@@ -323,6 +337,15 @@ export default function AdminPage() {
       ) : null}
       {tab === "floors" && floors ? (
         <FloorsPanel floors={floors} busy={busy} run={run} onChanged={loadFloors} />
+      ) : null}
+      {tab === "cameras" ? (
+        <CamerasPanel
+          cameras={cameras}
+          zones={floors?.zones ?? []}
+          busy={busy}
+          run={run}
+          onChanged={loadCameras}
+        />
       ) : null}
       {tab === "staff" ? (
         <StaffPanel staff={staff} busy={busy} run={run} onChanged={loadStaff} />

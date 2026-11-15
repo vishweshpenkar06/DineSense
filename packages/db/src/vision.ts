@@ -166,6 +166,7 @@ export type VisionConfig = {
 export async function getVisionConfig(): Promise<VisionConfig> {
   const settings = await loadSettings();
   const cameras = await prisma.camera.findMany({
+    where: { active: true },
     include: {
       tables: { where: { active: true }, orderBy: { label: "asc" } },
     },

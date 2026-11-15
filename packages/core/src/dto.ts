@@ -410,3 +410,48 @@ export type ReportSummaryDto = {
     avgAlertResponseS: number | null;
   };
 };
+
+export type AdminCameraDto = {
+  id: string;
+  name: string;
+  zoneId: string;
+  zoneName: string;
+  status: "UNKNOWN" | "OK" | "DEGRADED" | "OFFLINE";
+  fps: number | null;
+  lastHeartbeatAt: string | null;
+  active: boolean;
+  tableCount: number;
+  hasRtsp: boolean;
+};
+
+export type CameraCalibrationTableDto = {
+  id: string;
+  label: string;
+  cameraId: string | null;
+  visionMutedUntil: string | null;
+  polygon: number[][] | null;
+};
+
+export type CameraCalibrationDto = {
+  camera: AdminCameraDto;
+  tables: CameraCalibrationTableDto[];
+};
+
+export type VisionDetectionDto = {
+  id: string;
+  eventId: string;
+  tableId: string | null;
+  tableLabel: string | null;
+  cameraId: string | null;
+  cameraName: string | null;
+  state: string;
+  personCount: number;
+  confidence: number;
+  ts: string;
+  receivedAt: string;
+};
+
+export type TuningResponseDto = {
+  columns: string[];
+  rows: Array<Record<string, string>>;
+};

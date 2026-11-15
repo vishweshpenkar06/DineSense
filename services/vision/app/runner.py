@@ -231,6 +231,11 @@ class CameraRunner(threading.Thread):
             self._set_stats(status, measured_fps or target_fps, target_fps)
 
             if now >= next_snapshot:
+                raw_encoded, raw_buffer = cv2.imencode(
+                    ".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85]
+                )
+                if raw_encoded:
+                    self._snapshots.put(self.camera_id, raw_buffer.tobytes(), time.time(), "raw")
                 annotated = annotate_frame(
                     frame.copy(),
                     current,
@@ -244,7 +249,9 @@ class CameraRunner(threading.Thread):
                     ".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), 80]
                 )
                 if encoded:
-                    self._snapshots.put(self.camera_id, buffer.tobytes(), time.time())
+                    self._snapshots.put(
+                        self.camera_id, buffer.tobytes(), time.time(), "annotated"
+                    )
                 for table in current.tables:
                     self._tuning.log(
                         {

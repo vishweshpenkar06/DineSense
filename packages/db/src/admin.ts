@@ -1,6 +1,10 @@
 import {
+  encryptSecret,
   hashSecret,
+  type AdminCameraDto,
   type AdminCategoryDto,
+  type CameraCalibrationDto,
+  type CameraCalibrationTableDto,
   type AdminFloorsDto,
   type AdminItemDto,
   type AdminMenuDto,
@@ -10,9 +14,12 @@ import {
   type MenuImportGroup,
   type Settings,
   type StaffRole,
+  type TuningResponseDto,
+  type VisionDetectionDto,
 } from "@dinesense/core";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./client";
+import { encryptionKeySource } from "./config";
 import { ConflictError, DomainError, NotFoundError } from "./errors";
 import { notify } from "./notify";
 import { loadSettings } from "./settings";
@@ -512,7 +519,10 @@ export async function getAdminFloors(): Promise<AdminFloorsDto> {
         tables: { orderBy: { label: "asc" } },
       },
     }),
-    prisma.camera.findMany({ select: { id: true, name: true, zoneId: true } }),
+    prisma.camera.findMany({
+      where: { active: true },
+      select: { id: true, name: true, zoneId: true },
+    }),
   ]);
   return {
     zones: zones.map((zone) => ({
@@ -951,4 +961,262 @@ export async function updateRestaurant(input: {
     });
     await audit(tx, input.actorId, "restaurant.updated", "restaurant", "default", { name });
   });
+}
+
+function cameraDto(camera: {
+  id: string;
+  name: string;
+  zoneId: string;
+  status: string;
+  fps: number | null;
+  lastHeartbeatAt: Date | null;
+  active: boolean;
+  rtspUrlEncrypted: string;
+  zone: { name: string };
+  _count: { tables: number };
+}): AdminCameraDto {
+  return {
+    id: camera.id,
+    name: camera.name,
+    zoneId: camera.zoneId,
+    zoneName: camera.zone.name,
+    status: camera.status as AdminCameraDto["status"],
+    fps: camera.fps,
+    lastHeartbeatAt: camera.lastHeartbeatAt?.toISOString() ?? null,
+    active: camera.active,
+    tableCount: camera._count.tables,
+    hasRtsp: Boolean(camera.rtspUrlEncrypted),
+  };
+}
+
+export async function getAdminCameras(): Promise<AdminCameraDto[]> {
+  const cameras = await prisma.camera.findMany({
+    include: {
+      zone: { select: { name: true } },
+      _count: { select: { tables: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  return cameras.map(cameraDto);
+}
+
+function validateStreamUrl(url: string): string {
+  const trimmed = required(url, "RTSP URL");
+  if (!/^(rtsp|rtsps|http|https):\/\//i.test(trimmed)) {
+    throw new DomainError("Use an rtsp:// or https:// stream URL");
+  }
+  return trimmed;
+}
+
+export async function createCamera(input: {
+  name: string;
+  zoneId: string;
+  rtspUrl: string;
+  actorId?: string | null;
+}): Promise<{ id: string }> {
+  const name = required(input.name, "Camera name");
+  const url = validateStreamUrl(input.rtspUrl);
+  const created = await prisma.$transaction(async (tx) => {
+    const zone = await tx.zone.findUnique({ where: { id: input.zoneId } });
+    if (!zone) throw new NotFoundError("floor");
+    const camera = await tx.camera.create({
+      data: {
+        name,
+        zoneId: input.zoneId,
+        rtspUrlEncrypted: encryptSecret(url, encryptionKeySource()),
+      },
+    });
+    await audit(tx, input.actorId, "camera.created", "camera", camera.id, {
+      name,
+      zone: zone.name,
+    });
+    return camera;
+  });
+  await notify("camera.status", { cameraId: created.id, status: "UNKNOWN" });
+  return { id: created.id };
+}
+
+export async function updateCamera(input: {
+  id: string;
+  name?: string;
+  zoneId?: string;
+  rtspUrl?: string;
+  active?: boolean;
+  actorId?: string | null;
+}): Promise<void> {
+  const camera = await prisma.camera.findUnique({
+    where: { id: input.id },
+    include: { _count: { select: { tables: true } } },
+  });
+  if (!camera) throw new NotFoundError("camera");
+  const name = input.name !== undefined ? required(input.name, "Camera name") : undefined;
+  if (input.zoneId && input.zoneId !== camera.zoneId && camera._count.tables > 0) {
+    throw new ConflictError("Unassign the tables before moving the camera to another floor");
+  }
+  if (input.zoneId) {
+    const zone = await prisma.zone.findUnique({ where: { id: input.zoneId } });
+    if (!zone) throw new NotFoundError("floor");
+  }
+  const encrypted = input.rtspUrl
+    ? encryptSecret(validateStreamUrl(input.rtspUrl), encryptionKeySource())
+    : undefined;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.camera.update({
+      where: { id: input.id },
+      data: {
+        name,
+        zoneId: input.zoneId,
+        rtspUrlEncrypted: encrypted,
+        active: input.active,
+      },
+    });
+    await audit(tx, input.actorId, "camera.updated", "camera", input.id, {
+      name,
+      zoneId: input.zoneId,
+      active: input.active,
+      credentialsChanged: Boolean(input.rtspUrl),
+    });
+  });
+  await notify("camera.status", { cameraId: input.id, active: input.active });
+}
+
+export async function deleteCamera(input: {
+  id: string;
+  actorId?: string | null;
+}): Promise<{ softDeleted: boolean }> {
+  const camera = await prisma.camera.findUnique({
+    where: { id: input.id },
+    include: { _count: { select: { tables: true, events: true } } },
+  });
+  if (!camera) throw new NotFoundError("camera");
+  const used = camera._count.tables + camera._count.events > 0;
+  await prisma.$transaction(async (tx) => {
+    if (used) {
+      await tx.camera.update({ where: { id: input.id }, data: { active: false } });
+    } else {
+      await tx.camera.delete({ where: { id: input.id } });
+    }
+    await audit(tx, input.actorId, used ? "camera.deactivated" : "camera.deleted", "camera", input.id, {
+      name: camera.name,
+    });
+  });
+  await notify("camera.status", { cameraId: input.id, active: false });
+  return { softDeleted: used };
+}
+
+function polygonOf(value: unknown): number[][] | null {
+  if (!Array.isArray(value)) return null;
+  const points: number[][] = [];
+  for (const point of value) {
+    if (!Array.isArray(point) || point.length !== 2) return null;
+    const x = Number(point[0]);
+    const y = Number(point[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    points.push([x, y]);
+  }
+  return points.length >= 3 ? points : null;
+}
+
+export async function getCameraCalibration(cameraId: string): Promise<CameraCalibrationDto> {
+  const camera = await prisma.camera.findUnique({
+    where: { id: cameraId },
+    include: {
+      zone: { select: { name: true } },
+      _count: { select: { tables: true } },
+    },
+  });
+  if (!camera) throw new NotFoundError("camera");
+  const tables = await prisma.diningTable.findMany({
+    where: { zoneId: camera.zoneId, active: true },
+    orderBy: { label: "asc" },
+  });
+  return {
+    camera: cameraDto(camera),
+    tables: tables.map((table): CameraCalibrationTableDto => ({
+      id: table.id,
+      label: table.label,
+      cameraId: table.cameraId,
+      visionMutedUntil: table.visionMutedUntil?.toISOString() ?? null,
+      polygon: polygonOf(table.zonePolygon),
+    })),
+  };
+}
+
+export async function setTableZone(input: {
+  tableId: string;
+  cameraId: string;
+  polygon: number[][];
+  actorId?: string | null;
+}): Promise<{ polygon: number[][] }> {
+  if (!Array.isArray(input.polygon) || input.polygon.length < 3) {
+    throw new DomainError("Draw at least three points");
+  }
+  const points = input.polygon.map((point) => {
+    if (!Array.isArray(point) || point.length !== 2) {
+      throw new DomainError("Each point needs an x and y");
+    }
+    const x = Number(point[0]);
+    const y = Number(point[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) {
+      throw new DomainError("Points must be normalized between 0 and 1");
+    }
+    return [Math.round(x * 10000) / 10000, Math.round(y * 10000) / 10000];
+  });
+
+  const result = await prisma.$transaction(async (tx) => {
+    const [table, camera] = await Promise.all([
+      tx.diningTable.findUnique({ where: { id: input.tableId } }),
+      tx.camera.findUnique({ where: { id: input.cameraId } }),
+    ]);
+    if (!table) throw new NotFoundError("table");
+    if (!camera) throw new NotFoundError("camera");
+    if (table.zoneId !== camera.zoneId) {
+      throw new DomainError("The camera and table must be on the same floor");
+    }
+    const updated = await tx.diningTable.update({
+      where: { id: input.tableId },
+      data: { cameraId: input.cameraId, zonePolygon: points },
+    });
+    await audit(tx, input.actorId, "camera.table_zone_set", "table", input.tableId, {
+      cameraId: input.cameraId,
+      points: points.length,
+    });
+    return updated;
+  });
+  await notify("table.updated", { tableId: result.id, reason: "calibration" });
+  return { polygon: points };
+}
+
+export async function getRecentDetections(input: {
+  cameraId?: string;
+  tableId?: string;
+  limit?: number;
+}): Promise<VisionDetectionDto[]> {
+  const limit = Math.min(Math.max(input.limit ?? 40, 1), 200);
+  const events = await prisma.visionEvent.findMany({
+    where: {
+      ...(input.cameraId ? { cameraId: input.cameraId } : {}),
+      ...(input.tableId ? { tableId: input.tableId } : {}),
+    },
+    include: {
+      table: { select: { label: true } },
+      camera: { select: { name: true } },
+    },
+    orderBy: { ts: "desc" },
+    take: limit,
+  });
+  return events.map((event) => ({
+    id: event.id,
+    eventId: event.eventId,
+    tableId: event.tableId,
+    tableLabel: event.table?.label ?? null,
+    cameraId: event.cameraId,
+    cameraName: event.camera?.name ?? null,
+    state: event.state,
+    personCount: event.personCount,
+    confidence: event.confidence,
+    ts: event.ts.toISOString(),
+    receivedAt: event.createdAt.toISOString(),
+  }));
 }

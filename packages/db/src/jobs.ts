@@ -165,10 +165,20 @@ export async function processCameraHealth(now = new Date()): Promise<number> {
   return stale.count;
 }
 
+export async function processVisionEventRetention(now = new Date()): Promise<number> {
+  const settings = await loadSettings();
+  const cutoff = new Date(
+    now.getTime() - settings.VISION_EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  );
+  const deleted = await prisma.visionEvent.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  return deleted.count;
+}
+
 export async function workerTick(now = new Date()): Promise<void> {
   await processDueTimers(now);
   await processAbandoned(now);
   await processTaskAlerts(now);
   await processCameraHealth(now);
+  await processVisionEventRetention(now);
   await writeInternalSetting("_worker_last_tick", { at: now.toISOString() });
 }

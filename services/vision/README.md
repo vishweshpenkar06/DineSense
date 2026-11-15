@@ -85,13 +85,23 @@ static, so dev-console camera mute is not visible in demo mode (API mode honors 
 
 ## Endpoints
 
-- `GET /health` — service/camera status, FPS, queue, config source
+All endpoints except `/health` require `Authorization: Bearer $VISION_SHARED_SECRET`.
+
+- `GET /health` — service/camera status, FPS, queue, config source (public for the
+  container healthcheck; bound to localhost)
 - `GET /snapshot/{camera_id}.jpg` — latest annotated JPEG (polygons green/red,
   person counts, camera FPS header)
+- `GET /frame/{camera_id}.jpg` — latest **raw** frame for admin calibration
+- `POST /test` — `{ "rtsp_url": "rtsp://..." }` → `{ok, width, height, fps, error}`;
+  opens with a 5s timeout. Also accepts a `/data/` video path for the demo
+- `POST /config/refresh` — asks the service to re-pull `/api/vision/config` now
+  (used after camera or zone changes)
+- `GET /tuning?tail=N` — parsed tail of the tuning CSV (counts/states, no images)
 
-The port is published as `127.0.0.1:8100` in Compose. Browsers will use the web
-proxy (`/api/camera/:id/snapshot.jpg`) when the camera screen lands in Phase 6.
-RTSP credentials never leave the server side.
+The port is published as `127.0.0.1:8100` in Compose. Staff browsers use the
+authenticated web proxies (`/api/camera/:id/snapshot.jpg` for the waiter and
+`/api/admin/cameras/:id/frame.jpg` for admin calibration); RTSP credentials never
+leave the server side.
 
 ## Tests
 
@@ -127,6 +137,10 @@ For 4 cameras on a 4-core mini PC, export ONNX/OpenVINO, cap Torch threads
 - Overload → FPS target drops (min 1) and heartbeats/annotations say `degraded`.
 - Muted table → states keep updating internally but no events are sent; the current
   state is sent once mute expires.
+- Camera/zone changes → the app calls `/config/refresh`; otherwise config is re-pulled
+  every 60s. The demo file mode (`VISION_DEMO=true`) ignores database changes.
+- Diagnostics → the worker prunes vision events after 30 days; tuning CSVs remain on
+  the mini PC's data volume.
 
 ## Privacy
 

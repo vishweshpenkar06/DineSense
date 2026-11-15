@@ -45,12 +45,18 @@ class TuningLogger:
 class SnapshotStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._frames: dict[str, tuple[bytes, float]] = {}
+        self._frames: dict[str, dict[str, tuple[bytes, float]]] = {}
 
-    def put(self, camera_id: str, jpeg: bytes, taken_at: float) -> None:
+    def put(
+        self,
+        camera_id: str,
+        jpeg: bytes,
+        taken_at: float,
+        kind: str = "annotated",
+    ) -> None:
         with self._lock:
-            self._frames[camera_id] = (jpeg, taken_at)
+            self._frames.setdefault(camera_id, {})[kind] = (jpeg, taken_at)
 
-    def get(self, camera_id: str) -> tuple[bytes, float] | None:
+    def get(self, camera_id: str, kind: str = "annotated") -> tuple[bytes, float] | None:
         with self._lock:
-            return self._frames.get(camera_id)
+            return self._frames.get(camera_id, {}).get(kind)
