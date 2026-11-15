@@ -1,3 +1,7 @@
+{
+	default_sni {$SITE_ADDRESS:localhost}
+}
+
 # Phase 3 LAN HTTPS with Caddy's internal CA.
 # Phones must install the root certificate once (docs/HTTPS.md).
 # With a real domain + DNS challenge, use deploy/Caddyfile.acme instead.

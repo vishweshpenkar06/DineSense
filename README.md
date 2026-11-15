@@ -159,10 +159,15 @@ On Ubuntu/Debian install `docker-ce` and `docker-compose-plugin` from Docker's
 official repository. Verify with `docker compose version`. The stack is Docker-only;
 Podman is not a supported install path for this project.
 
-Open **https://localhost** (Caddy internal CA; accept the warning for local testing,
-or install `caddy-root.crt` — see `docs/HTTPS.md`). The direct dev URL
-<http://localhost:3000> also works for PWA testing because localhost is a secure
-context; real phones must use `https://<SITE_ADDRESS>`.
+Open **https://<LAN-IP>** (Caddy internal CA; install `caddy-root.crt` once per phone
+— see `docs/HTTPS.md`). `https://localhost` works when `SITE_ADDRESS=localhost`.
+The direct dev URL <http://localhost:3000> also works for PWA testing because
+localhost is a secure context.
+
+For a hotel/restaurant Wi-Fi deployment, the mini PC and staff devices must be on the
+same network with **AP/client isolation off**, and the mini PC should have a DHCP
+reservation. Run `./scripts/lan-ip.sh` to get the exact `.env` lines. If the venue
+blocks device-to-device traffic, use a dedicated staff router/AP.
 
 | App | URL |
 |---|---|
