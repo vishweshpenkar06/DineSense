@@ -11,5 +11,6 @@ export * from "./billing";
 export * from "./dev";
 export * from "./admin";
 export * from "./reports";
+export * from "./setup";
 export * from "./snapshot";
 export * from "./vision";

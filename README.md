@@ -3,14 +3,14 @@
 Local-first restaurant operations for a small two-floor Indo-Chinese restaurant.
 One mini PC, no internet required, phones on the LAN.
 
-**Status: Phase 6 — Camera Calibration.** Everything through admin is built, plus
-on-site camera setup: add/test a camera, calibrate table zones by drawing on a raw
-frame, live snapshots, recent-detection review, the tuning log and vision mute.
-The installer/setup wizard is the remaining phase.
+**Status: Phase 7 — Productization. v1 is complete.** The full product is built:
+core engine, vision, waiter/chef PWAs, reception/billing, admin, camera calibration,
+a first-run setup wizard, installer, backups/restore, updates, health and
+diagnostics, plus the operator documentation. It is ready for a pilot install.
 
 ---
 
-## What is built (Phases 1–6)
+## What is built (Phases 1–7)
 
 - Full Prisma data model for the whole product (§9 of the masterplan) with one
   migration, including a partial unique index that enforces one open visit per table.
@@ -118,10 +118,10 @@ reports `degraded` when it cannot keep up.
 
 ### Phase 3 acceptance (staff apps)
 
-- `npm run acceptance`: **109/109** checks across Phases 1–6 (kitchen, takeaway,
+- `npm run acceptance`: **114/114** checks across Phases 1–7 (kitchen, takeaway,
   stock, bills, tax, payments, voids, reopen, reports, admin CRUD, menu import,
-  camera encryption/active filtering/calibration).
-- `npm run test:e2e`: **6/6** Playwright tests:
+  camera encryption/active filtering/calibration, setup status and guided test).
+- `npm run test:e2e`: **7/7** Playwright tests:
   1. waiter seats G3 → orders → chef starts/readies → waiter serves → requests bill,
      across two independent browser contexts;
   2. the waiter phone goes offline mid-order, the order is queued, and after
@@ -133,7 +133,8 @@ reports `degraded` when it cannot keep up.
      through `/admin`, then restores the settings and cleans the test rows;
   6. the owner opens Cameras, calibrates a table zone by drawing four points on the
      raw demo frame, verifies the saved polygon and restores it; recent detections
-     and tuning rows are visible.
+     and tuning rows are visible;
+  7. a fresh owner is redirected to `/setup`, runs the guided test and finishes.
 - HTTPS verified end-to-end through Caddy's internal CA, including staff login; the
   camera proxy returns `image/jpeg` for staff and `401` for anonymous callers.
 
@@ -159,6 +160,21 @@ retention, admin reopen with payment reversal, and inclusive tax
 (`₹400` inclusive at 5% → taxable `₹380.95`, tax `₹19.05`, total unchanged).
 Physical thermal/A4 paper was not available; the print CSS widths and content are
 verified headlessly and need a manual check on the owner's printer.
+
+### Phase 7 acceptance (productization)
+
+- Setup wizard E2E: reopening setup, admin redirect, guided test run (seat → alert
+  → order → ready → paid), cleanup and completion.
+- Health API/page shows DB latency, worker tick, disk, backup age, clock skew and
+  cameras; the diagnostics ZIP downloads with no secrets/video.
+- Backup script produced a 51 KB dump; a restore into a scratch database recreated
+  all **21 tables** identically. The live database was not overwritten.
+- Power-cycle test: `docker compose down` → `up -d` kept users, tables, menu,
+  settings and login; a seated table's in-flight `decisionDeadline` was byte-for-byte
+  identical after the restart and cameras returned to `OK`.
+- `install.sh`, `update.sh`, backup/restore/healthcheck scripts pass `bash -n`.
+  A truly blank mini PC was not available here; the install path is documented and
+  needs the documented Ubuntu run at handover.
 
 ### Phase 6 acceptance (cameras)
 
@@ -200,10 +216,12 @@ apps/worker       Node worker: timers, abandonment, task alerts
 packages/core     Pure TypeScript domain logic + Vitest tests
 packages/db       Prisma schema/migrations/seed + DB services (engine, jobs, orders)
 services/vision   Python FastAPI + YOLO11n vision service, pytest, demo generator
-e2e               Playwright: two-device order flow, offline queue, PWA shell
+e2e               Playwright: devices, offline queue, PWA, reception, admin, cameras, setup
 deploy            Caddyfile (internal CA) and Caddyfile.acme
-docs              HTTPS/root-certificate guide
-scripts           PWA icons, CA export
+docs              INSTALL, HARDWARE, HTTPS/CA, quick guides
+scripts           install/update/backup/restore/healthcheck/diagnostics, CA, icons
+install.sh        one-command Ubuntu mini-PC install
+backups/          nightly pg_dump files (14 days)
 docker-compose.yml
 ```
 
@@ -217,6 +235,15 @@ sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 # then log out and back in, or run `newgrp docker`
 
+# Production (Ubuntu mini PC): creates secrets, starts everything, seeds the
+# owner account and prints the admin password + setup URL.
+sudo ./install.sh
+```
+
+Then open `https://<LAN-IP>/setup`, install `caddy-root.crt` on staff devices
+(`docs/HTTPS.md`) and follow the wizard. The manual development path is:
+
+```bash
 cp .env.example .env        # edit secrets before real use
 docker compose up -d --build
 docker compose run --rm migrate npm run db:seed -w @dinesense/db
@@ -290,8 +317,8 @@ npm run dev:web               # terminal 2
 ```bash
 npm run test:core             # pure domain tests (no DB)
 npm run typecheck             # all workspaces
-npm run acceptance            # needs migrated + seeded Postgres (109 checks)
-npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000 (6 tests)
+npm run acceptance            # needs migrated + seeded Postgres (114 checks)
+npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000 (7 tests)
 docker compose run --rm --no-deps vision pytest   # 36 vision tests
 ```
 
@@ -380,7 +407,8 @@ start and end; menu/zone/table seed data is untouched.
 7. **Cameras:** add/test a camera, disable/enable it, open **Calibrate** to draw
    table zones on the live raw frame, mute a table for five minutes, and review the
    recent detections and tuning CSV (no images).
-8. The dev console remains at `/dev` for simulation and diagnostics.
+8. **Health:** database/worker/disk/backup/clock/cameras and the diagnostics ZIP.
+9. The dev console remains at `/dev` for simulation and diagnostics.
 
 ## Camera setup (non-developer)
 
@@ -399,6 +427,18 @@ start and end; menu/zone/table seed data is untouched.
    vision service within seconds; the waiter board and alerts use the new polygon.
 6. Budget: once the stream is reachable, 11 zones take about 10–20 minutes. Camera
    placement tips are in the hardware guide (Phase 7).
+
+## First-run setup walkthrough
+
+On a fresh install, signing in as admin redirects to `/setup`:
+
+1. Restaurant profile (name/address/GSTIN/footer).
+2. Default layout (G1–G5 non-AC, F1–F6 AC) or your own.
+3. Cameras: add/test/calibrate; you can skip and do it later.
+4. Menu import (CSV/XLSX) or the menu manager.
+5. Staff PINs.
+6. Timers/tax (3-minute decision window shown prominently).
+7. Run the guided test and **Finish setup**. The test removes its own order/bill.
 
 ## Manual verification (Phase 1)
 
@@ -474,6 +514,20 @@ logs -f worker` shows a tick failure if anything is wrong.
 | C9 | Set tax 5% exclusive in Settings; print a bill | CGST/SGST/round-off on the bill |
 | C10 | Try a 1s decision window / a 2-digit PIN | Both rejected with a clear message |
 
+### Productization verification (Phase 7)
+
+| # | Do this | Expect |
+|---|---|---|
+| E1 | Run `sudo ./install.sh` on a fresh Ubuntu mini PC | Stack starts, admin password/setup URL printed |
+| E2 | Install the root CA and open `/setup` | Wizard steps; finish reaches `/admin` |
+| E3 | Guided test run | Seat → alert → order → ready → paid → clean, table free |
+| E4 | Admin → Health | DB/worker/disk/backup/clock/cameras visible |
+| E5 | Download diagnostics | ZIP with health/settings/logs, no secrets/video |
+| E6 | `./scripts/backup.sh`, then restore into a scratch DB | All tables restored; live DB untouched |
+| E7 | Pull power/down and reboot | Data, open visits and deadlines resume |
+| E8 | Pull Wi-Fi on a waiter phone mid-order | Order queued; sent exactly once after reconnect |
+| E9 | Full 11-zone camera setup | Under 30 minutes once the stream is reachable |
+
 ### Camera verification (Phase 6)
 
 | # | Do this | Expect |
@@ -500,7 +554,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 | V6 | Open `http://127.0.0.1:8100/health` | Per-camera status, FPS, queue and config source |
 | V7 | Open `http://127.0.0.1:8100/snapshot/<camera_id>.jpg` | Annotated zones (green/red) and FPS header |
 
-## API surface (Phases 1–6)
+## API surface (Phases 1–7)
 
 - `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me`
 - `GET /api/snapshot` · `GET /api/stream` (SSE, role-filtered)
@@ -526,6 +580,10 @@ logs -f worker` shows a tick failure if anything is wrong.
   `GET/PUT /api/admin/settings` · `PUT /api/admin/restaurant`
 - Reports: `GET /api/reports/summary?preset|from&to` ·
   `GET /api/reports/export.csv?preset|from&to`
+- Setup: `GET /api/admin/setup/status` · `POST /api/admin/setup/complete` ·
+  `POST /api/admin/setup/reopen` · `POST /api/admin/setup/demo`
+- Operations: `GET /api/health` (DB/worker/disk/backup/clock/cameras) ·
+  `GET /api/admin/diagnostics` (ZIP)
 - Cameras: `GET/POST/PATCH/DELETE /api/admin/cameras` ·
   `POST /api/admin/cameras/test` · `GET /api/admin/cameras/:id/frame.jpg` (raw) ·
   `GET/PUT /api/admin/cameras/:id/calibration` ·
@@ -537,7 +595,7 @@ logs -f worker` shows a tick failure if anything is wrong.
   `GET /tuning` — all but health require the Bearer `VISION_SHARED_SECRET`
 - Dev-only: `POST /api/dev/simulate` · `POST /api/dev/order` · `POST /api/dev/time-skip` · `GET /api/dev/events`
 
-## Assumptions and defaults (Phases 1–6)
+## Assumptions and defaults (Phases 1–7)
 
 - **Vision debounce lives in the vision service**, so an incoming `occupied`/`empty`
   event is treated as already confirmed. The app additionally waits
@@ -624,6 +682,33 @@ logs -f worker` shows a tick failure if anything is wrong.
   paths, with a 5s open/read timeout. No video is recorded.
 - **Retention:** vision events and tuning rows are diagnostic data; events are pruned
   after 30 days by the worker (`VISION_EVENT_RETENTION_DAYS`, default 30).
+- **First-run state:** a fresh install seeds only the owner + default settings
+  (`--minimal`); `SETUP_COMPLETE` stays false until the wizard finishes. Existing
+  databases without that key are treated as complete when floors, tables, menu and
+  staff already exist, so upgrades do not get trapped in setup.
+- **Installer:** targets Ubuntu 22.04/24.04 with Docker Engine + Compose; it creates
+  random secrets, prints the admin password once, exports the CA and schedules a
+  nightly backup when cron exists. It does not wipe a database that already has users.
+- **Backups/restore:** host-side pg_dump via cron, 14-day retention, optional
+  `BACKUP_USB_PATH`/`BACKUP_RCLONE_REMOTE`. Restore replaces all data and asks for
+  confirmation; test a restore before go-live.
+- **Power cuts:** Docker restart policies + Postgres volume + DB-stored deadlines.
+  After boot the stack resumes; the worker processes overdue deadlines immediately.
+- **Diagnostics:** the ZIP contains health, settings, profile, staff/camera metadata,
+  audit/detection logs and the tuning CSV; no video, images, RTSP URLs or secrets.
+  Host service logs use `scripts/diagnostics.sh`.
+- **Updates:** `update.sh` backs up, pulls, rebuilds, migrates, restarts and health
+  checks; on failure it rolls the code back and warns to restore the pre-update dump
+  if the migration touched data.
+- **First-run setup wizard** (`/setup`): restaurant profile, default two-floor layout,
+  cameras/calibration, menu import, staff PINs, timers/tax and a guided
+  seated → alert → order → ready → served → paid test that cleans up after itself.
+- **Installer and operations:** `install.sh` (Docker, random secrets, minimal seed,
+  CA export, nightly cron), `update.sh` with backup + health rollback,
+  `backup.sh`/`restore.sh` (pg_dump, 14 days, optional USB/rclone), `healthcheck.sh`,
+  `diagnostics.sh`, structured health and a one-click diagnostics ZIP.
+- **Operator docs:** install, hardware/placement, HTTPS/CA, and one-page quick guides
+  for waiter, chef, receptionist and owner.
 - **Staff:** admin accounts need a password (6+); staff use a 4–6 digit PIN; PINs and
   passwords are hashed. The owner cannot deactivate their own account. Staff PINs
   are not required to be globally unique (login checks each active hash); keep them
@@ -647,4 +732,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 
 ## Not built yet
 
-Phase 7 productization (installer, setup wizard, backups, health, docs).
+v1 scope is complete. The §18 exclusions (QR ordering, payment gateway, tips,
+inventory, multi-restaurant, native apps, voice, ESC/POS, table merging,
+reservations, staff recognition, loyalty, WhatsApp/SMS) remain deliberately out of
+v1.

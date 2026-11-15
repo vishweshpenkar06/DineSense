@@ -63,6 +63,10 @@ import {
   createTakeawaySession,
   cancelOrderItem,
   buildOrderContext,
+  completeSetup,
+  getSetupStatus,
+  reopenSetup,
+  runSetupDemo,
   workerLastTick,
   workerTick,
 } from "../src";
@@ -1071,6 +1075,43 @@ check(
   "test camera and table were cleaned up",
   (await prisma.camera.findUnique({ where: { id: testCamera.id } })) === null,
 );
+
+// ---------------------------------------------------------------------------
+// Phase 7: first-run setup, guided test run and completion state.
+// ---------------------------------------------------------------------------
+await resetRuntime();
+const setupBefore = await getSetupStatus();
+check(
+  "setup status reports counts for the owner",
+  setupBefore.counts.zones > 0 &&
+    setupBefore.counts.tables > 0 &&
+    setupBefore.counts.categories > 0,
+  `zones=${setupBefore.counts.zones} tables=${setupBefore.counts.tables}`,
+);
+await reopenSetup(adminUser.id);
+check("setup can be reopened for the wizard", (await getSetupStatus()).complete === false);
+const billsBeforeDemo = await prisma.bill.count();
+const demo = await runSetupDemo(adminUser.id);
+check(
+  "guided test run walks seat → alert → order → ready → paid → cleanup",
+  demo.steps.length >= 7 &&
+    demo.steps.some((step) => step.label === "Timer fired") &&
+    demo.steps.some((step) => step.label === "Bill paid") &&
+    demo.steps.some((step) => step.label === "Test data cleaned"),
+  `steps=${demo.steps.length}`,
+);
+const demoTables = await prisma.diningTable.findMany({ where: { label: demo.tableLabel } });
+const demoOpen = await prisma.session.count({
+  where: { tableId: { in: demoTables.map((table) => table.id) }, closedAt: null },
+});
+check(
+  "the guided test cleans up its order, bill and session",
+  (await prisma.bill.count()) === billsBeforeDemo &&
+    demoOpen === 0 &&
+    demoTables.every((table) => table.state === "free"),
+);
+await completeSetup(adminUser.id);
+check("setup completes and persists", (await getSetupStatus()).complete === true);
 
 await resetRuntime();
 const failed = results.filter((result) => !result.pass);

@@ -50,6 +50,7 @@ export default function ReceptionPage() {
   const [voiding, setVoiding] = useState<{ itemId: string; name: string; reason: string } | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [reopenReason, setReopenReason] = useState("");
+  const [healthStatus, setHealthStatus] = useState<string | null>(null);
 
   const isAdmin = snapshot?.me.role === "ADMIN";
 
@@ -73,6 +74,22 @@ export default function ReceptionPage() {
 
   useEffect(() => {
     void loadOpen();
+    let active = true;
+    const loadHealth = async () => {
+      try {
+        const response = await fetch("/api/health", { cache: "no-store" });
+        const data = (await response.json()) as { ok: boolean; status: string };
+        if (active) setHealthStatus(data.ok ? data.status : "down");
+      } catch {
+        if (active) setHealthStatus("down");
+      }
+    };
+    void loadHealth();
+    const timer = setInterval(loadHealth, 30_000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
   }, [loadOpen]);
 
   useEffect(() => {
@@ -264,6 +281,11 @@ export default function ReceptionPage() {
       {notice ? (
         <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
           {notice}
+        </div>
+      ) : null}
+      {healthStatus && healthStatus !== "ok" ? (
+        <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          System health is {healthStatus}. Check Admin → Health (database, worker, disk, backup).
         </div>
       ) : null}
       {escalated.length > 0 ? (

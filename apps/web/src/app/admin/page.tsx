@@ -16,12 +16,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CamerasPanel } from "./cameras-panel";
 import { FloorsPanel } from "./floors-panel";
+import { HealthPanel } from "./health-panel";
 import { MenuPanel } from "./menu-panel";
 import { SettingsPanel } from "./settings-panel";
 import { StaffPanel } from "./staff-panel";
 import { BTN, BTN_PRIMARY, CARD, duration, money, type Run } from "./ui";
 
-type Tab = "overview" | "menu" | "floors" | "cameras" | "staff" | "settings";
+type Tab = "overview" | "menu" | "floors" | "cameras" | "staff" | "settings" | "health";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -97,6 +98,18 @@ export default function AdminPage() {
       setError(errorMessage(caught));
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    getJson<{ complete: boolean }>("/api/admin/setup/status")
+      .then((data) => {
+        if (active && !data.complete) router.replace("/setup");
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   useEffect(() => {
     void loadReport("preset=today");
@@ -178,7 +191,7 @@ export default function AdminPage() {
       </header>
 
       <nav className="flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1">
-        {(["overview", "menu", "floors", "cameras", "staff", "settings"] as Tab[]).map((entry) => (
+        {(["overview", "menu", "floors", "cameras", "staff", "settings", "health"] as Tab[]).map((entry) => (
           <button
             key={entry}
             type="button"
@@ -353,6 +366,7 @@ export default function AdminPage() {
       {tab === "settings" && settingsData ? (
         <SettingsPanel data={settingsData} busy={busy} run={run} onChanged={loadSettings} />
       ) : null}
+      {tab === "health" ? <HealthPanel /> : null}
     </main>
   );
 }

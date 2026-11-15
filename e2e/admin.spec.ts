@@ -99,4 +99,10 @@ test("owner configures settings, tables and imports a menu without the database"
   await page.getByRole("button", { name: "Overview" }).click();
   await expect(page.getByText("Earnings", { exact: true })).toBeVisible();
   await expect(page.getByText("Export CSV")).toBeVisible();
+
+  await page.getByRole("button", { name: "Health" }).click();
+  await expect(page.getByText(/System health:/)).toBeVisible();
+  const diagnostics = await request.get("/api/admin/diagnostics");
+  expect(diagnostics.ok()).toBeTruthy();
+  expect(diagnostics.headers()["content-type"]).toContain("application/zip");
 });

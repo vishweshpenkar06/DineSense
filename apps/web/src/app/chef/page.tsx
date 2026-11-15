@@ -307,7 +307,7 @@ export default function ChefPage() {
               </h2>
               {column.items.length === 0 ? (
                 <p className="rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-4 text-sm text-slate-500">
-                  Empty
+                  No tickets yet
                 </p>
               ) : (
                 column.items.map((ticket) => (

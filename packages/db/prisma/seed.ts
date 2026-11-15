@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { DEFAULT_SETTINGS, encryptSecret, hashSecret } from "@dinesense/core";
 import { prisma } from "../src/client";
 import { encryptionKeySource } from "../src/config";
@@ -162,12 +163,37 @@ async function wipe(): Promise<void> {
 
 async function main(): Promise<void> {
   const force = process.argv.includes("--force") || process.env.SEED_FORCE === "true";
+  const minimal = process.argv.includes("--minimal");
   const userCount = await prisma.user.count();
   if (userCount > 0 && !force) {
     console.log("Seed skipped: database already has users. Re-run with --force to reset.");
     return;
   }
   if (force) await wipe();
+
+  if (minimal) {
+    await prisma.restaurantProfile.create({
+      data: {
+        id: "default",
+        name: "My Restaurant",
+        address: "Complete the setup wizard to set your address",
+      },
+    });
+    for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+      await prisma.setting.create({ data: { key, value } });
+    }
+    await prisma.setting.create({ data: { key: "SETUP_COMPLETE", value: false } });
+    const adminPassword =
+      process.env.SEED_ADMIN_PASSWORD ?? randomBytes(9).toString("base64url");
+    await prisma.user.create({
+      data: { name: "Owner", role: "ADMIN", passwordHash: hashSecret(adminPassword) },
+    });
+    console.log("Minimal install seeded (no demo data).");
+    console.log("  admin username: Owner (password login only)");
+    console.log("  admin password:", adminPassword);
+    console.log("  Open /login, sign in as admin, and complete /setup.");
+    return;
+  }
 
   await prisma.restaurantProfile.create({
     data: {
@@ -189,6 +215,7 @@ async function main(): Promise<void> {
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     await prisma.setting.create({ data: { key, value } });
   }
+  await prisma.setting.create({ data: { key: "SETUP_COMPLETE", value: true } });
 
   const groundCamera = await prisma.camera.create({
     data: {
