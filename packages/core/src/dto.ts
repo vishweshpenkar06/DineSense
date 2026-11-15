@@ -1,4 +1,5 @@
 import type { BillTotals } from "./billing";
+import type { Settings } from "./settings";
 
 import type { StaffRole, TableState, TaskStatus, TaskType } from "./types";
 
@@ -278,4 +279,134 @@ export type OpenBillRowDto = {
   billNumber: string | null;
   billRequested: boolean;
   escalatedTasks: number;
+};
+
+export type AdminVariantPriceDto = {
+  zoneId: string;
+  pricePaise: number;
+  available: boolean;
+};
+
+export type AdminVariantDto = {
+  id: string;
+  label: string;
+  prices: AdminVariantPriceDto[];
+};
+
+export type AdminItemDto = {
+  id: string;
+  categoryId: string;
+  name: string;
+  nameLocal: string | null;
+  isVeg: boolean;
+  needsKitchen: boolean;
+  available: boolean;
+  active: boolean;
+  sort: number;
+  variants: AdminVariantDto[];
+};
+
+export type AdminCategoryDto = {
+  id: string;
+  name: string;
+  sort: number;
+  items: AdminItemDto[];
+};
+
+export type AdminZoneDto = {
+  id: string;
+  name: string;
+  isAc: boolean;
+  surchargeType: "NONE" | "FLAT" | "PERCENT";
+  surchargeValue: number;
+  sort: number;
+};
+
+export type AdminMenuDto = {
+  zones: AdminZoneDto[];
+  categories: AdminCategoryDto[];
+};
+
+export type AdminTableDto = {
+  id: string;
+  zoneId: string;
+  label: string;
+  seats: number;
+  cameraId: string | null;
+  active: boolean;
+  state: string;
+};
+
+export type AdminFloorsDto = {
+  zones: Array<AdminZoneDto & { tables: AdminTableDto[] }>;
+  cameras: Array<{ id: string; name: string; zoneId: string }>;
+};
+
+export type AdminStaffDto = {
+  id: string;
+  name: string;
+  role: StaffRole;
+  active: boolean;
+  createdAt: string;
+  hasPin: boolean;
+  hasPassword: boolean;
+};
+
+export type AdminSettingsDto = {
+  settings: Settings;
+  restaurant: {
+    name: string;
+    address: string;
+    phone: string | null;
+    gstin: string | null;
+    billFooter: string | null;
+  };
+};
+
+export type ReportDishDto = {
+  name: string;
+  variant: string;
+  qty: number;
+  amountPaise: number;
+};
+
+export type ReportFloorDto = {
+  zoneName: string;
+  isAc: boolean;
+  earningsPaise: number;
+  billsCount: number;
+};
+
+export type ReportHourDto = {
+  hour: number;
+  earningsPaise: number;
+  billsCount: number;
+};
+
+export type ReportPaymentDto = {
+  method: string;
+  amountPaise: number;
+  count: number;
+};
+
+export type ReportSummaryDto = {
+  from: string;
+  to: string;
+  rangeStart: string;
+  rangeEnd: string;
+  earningsPaise: number;
+  billsCount: number;
+  averageBillPaise: number;
+  ordersCount: number;
+  itemsCount: number;
+  topDishes: ReportDishDto[];
+  bottomDishes: ReportDishDto[];
+  byFloor: ReportFloorDto[];
+  byHour: ReportHourDto[];
+  byPayment: ReportPaymentDto[];
+  operations: {
+    avgSeatedToFirstOrderS: number | null;
+    avgOrderToReadyS: number | null;
+    avgAlertResponseS: number | null;
+  };
 };

@@ -9,5 +9,7 @@ export * from "./orders";
 export * from "./service";
 export * from "./billing";
 export * from "./dev";
+export * from "./admin";
+export * from "./reports";
 export * from "./snapshot";
 export * from "./vision";

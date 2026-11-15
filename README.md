@@ -3,14 +3,15 @@
 Local-first restaurant operations for a small two-floor Indo-Chinese restaurant.
 One mini PC, no internet required, phones on the LAN.
 
-**Status: Phase 4 — Reception & Billing.** The engine, vision, waiter/chef PWAs,
-LAN HTTPS, the offline queue, the kitchen lifecycle and the receptionist billing
-workspace (bills, tax, split payments, printing, voids, reopen) are built and
-tested. Admin and the setup wizard are later phases.
+**Status: Phase 5 — Admin.** The engine, vision, waiter/chef PWAs, LAN HTTPS, the
+offline queue, the kitchen lifecycle and reception/billing are built. The owner can
+now configure the restaurant (menu/import, floors, tables, staff, settings) and read
+sales/operations reports without touching the database. The setup wizard and
+camera calibration are later phases.
 
 ---
 
-## What is built (Phases 1–4)
+## What is built (Phases 1–5)
 
 - Full Prisma data model for the whole product (§9 of the masterplan) with one
   migration, including a partial unique index that enforces one open visit per table.
@@ -61,6 +62,15 @@ tested. Admin and the setup wizard are later phases.
 - **Printing:** browser print layouts for 80 mm thermal and A4 with restaurant
   profile, GSTIN, tax lines, payments and footer.
 - **Dev runtime reset** (`POST /api/dev/reset`, admin + dev flag) for demos and E2E.
+- **Admin workspace** (`/admin`): dashboard with presets and CSV export, menu manager,
+  CSV/XLSX menu import with preview/warnings, floors & tables, staff credentials,
+  restaurant profile and timer/tax/business-day settings.
+- **Reports:** earnings, bills, average bill, orders and items; top/bottom dishes;
+  earnings by floor, hour and payment method; seated→order, order→ready and alert
+  response times. Business-day ranges use the configurable IST cutoff.
+- **Admin rules/audit:** every configuration change is audited; items/variants with
+  order history are archived instead of deleted; staff can be deactivated; the owner
+  cannot deactivate themselves; invalid settings/PINs are rejected.
 
 ### Acceptance covered by `npm run acceptance`
 
@@ -100,16 +110,18 @@ reports `degraded` when it cannot keep up.
 
 ### Phase 3 acceptance (staff apps)
 
-- `npm run acceptance`: **81/81** checks across Phases 1–4 (kitchen, takeaway,
-  stock, bills, tax, payments, voids, reopen).
-- `npm run test:e2e`: **4/4** Playwright tests:
+- `npm run acceptance`: **101/101** checks across Phases 1–5 (kitchen, takeaway,
+  stock, bills, tax, payments, voids, reopen, reports, admin CRUD, menu import).
+- `npm run test:e2e`: **5/5** Playwright tests:
   1. waiter seats G3 → orders → chef starts/readies → waiter serves → requests bill,
      across two independent browser contexts;
   2. the waiter phone goes offline mid-order, the order is queued, and after
      reconnecting exactly one ticket is created for G5;
   3. manifest, icons and the service worker are served and registered;
   4. reception adds an extra, a 10% discount, splits cash/UPI payment and checks the
-     80 mm/A4 print widths and content.
+     80 mm/A4 print widths and content;
+  5. the owner changes a timer, adds/removes a table and imports a menu from CSV
+     through `/admin`, then restores the settings and cleans the test rows.
 - HTTPS verified end-to-end through Caddy's internal CA, including staff login; the
   camera proxy returns `image/jpeg` for staff and `401` for anonymous callers.
 
@@ -135,6 +147,20 @@ retention, admin reopen with payment reversal, and inclusive tax
 (`₹400` inclusive at 5% → taxable `₹380.95`, tax `₹19.05`, total unchanged).
 Physical thermal/A4 paper was not available; the print CSS widths and content are
 verified headlessly and need a manual check on the owner's printer.
+
+### Phase 5 acceptance (admin)
+
+- Reports match independently computed raw bills: earnings, bill count, order/item
+  counts, floor split, payment split and the item CSV were compared after a known
+  paid bill. A bill moved to 02:00 IST is included in the previous business day and
+  excluded from the current one.
+- Settings update and validation (invalid decision window rejected, then restored);
+  floor/table create→edit→delete; staff create→PIN reset→self-deactivation guard→
+  deactivate; menu import with two floor prices and a deliberately missing floor
+  price (variant unavailable there); imported rows cleaned up again.
+- The owner E2E does all of the above through `/admin`, without SQL.
+- `exceljs` is the only new dependency, used server-side to read XLSX files; CSV is
+  parsed by the pure, tested `parseCsv`.
 
 Physical phones/tablets were not available; the two-device flow used two independent
 browser contexts, and network loss used Chromium's offline mode. Install the CA and
@@ -308,9 +334,26 @@ start and end; menu/zone/table seed data is untouched.
    needs_cleaning.
 6. Print 80 mm or A4. Void an open bill, or reopen a paid bill as admin (payments are
    reversed and recorded in the audit log).
-7. Tax is 0 until the owner sets `TAX_RATE_PERCENT` / `TAX_MODE` in settings (the
-   admin UI arrives in Phase 5); the bill engine supports both exclusive and
-   inclusive GST.
+7. Tax is 0 until the owner sets `TAX_RATE_PERCENT` / `TAX_MODE` in
+   **Admin → Settings**; the bill engine supports both exclusive and inclusive GST.
+
+## Admin walkthrough
+
+1. Sign in as admin (`admin123` seed; password login, not PIN) and open `/admin`.
+2. **Overview:** pick Today/Yesterday/Last 7 days/This month or a custom range. Check
+   earnings, bills, average bill, orders/items, top/bottom dishes, floor/hour/payment
+   splits and operational times. **Export CSV** downloads item-level rows for the
+   same range.
+3. **Menu:** add categories/items/variants and per-floor prices; mark items/variants
+   unavailable; import a CSV/XLSX with the documented columns. The preview shows
+   row errors and missing-floor-price warnings before importing.
+4. **Floors & tables:** add/rename floors, set AC/surcharge, add/edit/remove tables
+   and assign cameras. New tables appear on the waiter board immediately.
+5. **Staff:** add waiters/chefs/receptionists with a 4–6 digit PIN, or admins with a
+   password; reset credentials and deactivate people. You cannot deactivate yourself.
+6. **Settings:** timers, tax rate/mode, bill prefix, business-day start and the
+   restaurant profile/GSTIN (used on printed bills). Invalid values are rejected.
+7. The dev console remains at `/dev` for simulation and diagnostics.
 
 ## Manual verification (Phase 1)
 
@@ -371,6 +414,21 @@ logs -f worker` shows a tick failure if anything is wrong.
 | B9 | Void an item after Start with a reason | Item struck off, totals recalculated |
 | B10 | Reception list | Running totals + bill-request/escalation flags |
 
+### Admin verification (Phase 5)
+
+| # | Do this | Expect |
+|---|---|---|
+| C1 | Admin password login | Lands on `/admin` |
+| C2 | Change the decision window to 240s | Saved; a newly seated table gets a 240s countdown |
+| C3 | Add a floor/table; check the waiter board; remove it | Table appears/disappears without SQL |
+| C4 | Add a waiter with PIN `4321`; sign in; deactivate | PIN works; deactivated login fails |
+| C5 | Import a CSV with ground + AC prices | Item/variants/prices appear; both floors correct |
+| C6 | Import a row with one blank floor price | Warning in preview; variant unavailable on that floor |
+| C7 | Overview vs a hand-summed set of bills | Earnings/bills/items and splits match |
+| C8 | Export CSV | Item rows with bill number, totals and payments |
+| C9 | Set tax 5% exclusive in Settings; print a bill | CGST/SGST/round-off on the bill |
+| C10 | Try a 1s decision window / a 2-digit PIN | Both rejected with a clear message |
+
 ### Vision verification
 
 | # | Do this | Expect |
@@ -383,7 +441,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 | V6 | Open `http://127.0.0.1:8100/health` | Per-camera status, FPS, queue and config source |
 | V7 | Open `http://127.0.0.1:8100/snapshot/<camera_id>.jpg` | Annotated zones (green/red) and FPS header |
 
-## API surface (Phases 1–4)
+## API surface (Phases 1–5)
 
 - `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me`
 - `GET /api/snapshot` · `GET /api/stream` (SSE, role-filtered)
@@ -403,11 +461,17 @@ logs -f worker` shows a tick failure if anything is wrong.
   `POST /api/bills/:sessionId/adjustments` (add/remove) ·
   `POST /api/bills/:sessionId/pay` · `POST /api/bills/:sessionId/void` ·
   `POST /api/bills/:sessionId/reopen` (admin)
+- Admin: `GET/POST/PATCH/DELETE /api/admin/menu` · `PUT /api/admin/menu/prices` ·
+  `POST /api/admin/menu/import/preview` · `POST /api/admin/menu/import` ·
+  `GET/POST/PATCH/DELETE /api/admin/floors` · `GET/POST/PATCH /api/admin/staff` ·
+  `GET/PUT /api/admin/settings` · `PUT /api/admin/restaurant`
+- Reports: `GET /api/reports/summary?preset|from&to` ·
+  `GET /api/reports/export.csv?preset|from&to`
 - Vision service (inside the LAN / bound to 127.0.0.1: `8100`): `GET /health`,
   `GET /snapshot/{camera_id}.jpg`
 - Dev-only: `POST /api/dev/simulate` · `POST /api/dev/order` · `POST /api/dev/time-skip` · `GET /api/dev/events`
 
-## Assumptions and defaults (Phases 1–4)
+## Assumptions and defaults (Phases 1–5)
 
 - **Vision debounce lives in the vision service**, so an incoming `occupied`/`empty`
   event is treated as already confirmed. The app additionally waits
@@ -466,6 +530,28 @@ logs -f worker` shows a tick failure if anything is wrong.
   v1. Verify the paper layout on the owner's printer at handover.
 - **Reception list** includes every open visit, including tables with no orders;
   takeaway bills appear as “Parcel” with no table.
+- **Reports:** earnings/bills come from PAID bills by `paidAt`; orders/items come
+  from non-cancelled orders by `placedAt`; dish totals use snapshotted item prices.
+  Payment-method sums are the recorded payments (change from overpayment is not
+  netted). Ranges are business dates in IST with the configurable cutoff.
+- **Menu import:** prices in the file are rupees and become integer paise; blank
+  prices create/keep an unavailable price on that floor and show a warning; re-import
+  upserts by category/item/variant (case-insensitive). Variants with order history
+  cannot be deleted; items with history are archived.
+- **Floors/tables:** a floor can only be deleted when it has no tables, cameras,
+  prices, visits or tasks; tables with history are archived instead of deleted.
+  Cameras are read-only in Phase 5 (assignment only); camera add/test/calibration is
+  Phase 6.
+- **Staff:** admin accounts need a password (6+); staff use a 4–6 digit PIN; PINs and
+  passwords are hashed. The owner cannot deactivate their own account. Staff PINs
+  are not required to be globally unique (login checks each active hash); keep them
+  distinct in practice.
+- **Settings bounds:** decision 30–3600s, snooze 30–3600s, ticket timers up to 4h,
+  tax 0–100%, business day `HH:mm`, bill prefix 1–8 alphanumerics. Invalid values
+  are rejected, not silently clamped.
+- **Dependency:** `exceljs` is used only server-side to read XLSX imports; CSV uses
+  the tested pure parser. It adds ~189 transitive packages to the web image; remove
+  it if XLSX support is dropped.
 - **Manual override** changes the table state; setting a table to `free` voids the
   open visit and cancels its tasks, and the action is audited.
 - **Takeaway ordering** is intentionally rejected until Phase 3 introduces the
@@ -479,4 +565,4 @@ logs -f worker` shows a tick failure if anything is wrong.
 
 ## Not built yet
 
-Phase 5 admin, Phase 6 camera calibration/admin review, Phase 7 productization.
+Phase 6 camera calibration/admin review, Phase 7 productization.

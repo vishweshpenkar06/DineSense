@@ -52,5 +52,5 @@ export function homeForRole(role: string): string {
   if (role === "WAITER") return "/waiter";
   if (role === "CHEF") return "/chef";
   if (role === "RECEPTIONIST") return "/reception";
-  return "/dev";
+  return "/admin";
 }

@@ -1,13 +1,32 @@
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import {
+  businessDateString,
+  businessDayStartFromDate,
+  shiftBusinessDate,
+  verifySecret,
+  type MenuImportGroup,
+} from "@dinesense/core";
 import { closeNotifyPool, prisma } from "../src";
 import {
   addBillAdjustment,
+  createStaff,
+  createTable,
+  createZone,
+  deleteCategory,
+  deleteItem,
+  deleteTable,
+  deleteZone,
+  getAdminFloors,
+  getAdminMenu,
   getBillView,
   getKitchenTickets,
   getMenuForZone,
   getOpenBills,
+  getReportCsv,
+  getReportSummary,
+  importMenuGroups,
   payBill,
   removeBillAdjustment,
   reopenBill,
@@ -29,6 +48,9 @@ import {
   setVariantAvailability,
   setVisionMute,
   startOrder,
+  updateAdminSettings,
+  updateStaff,
+  updateTable,
   createTakeawaySession,
   cancelOrderItem,
   buildOrderContext,
@@ -750,6 +772,209 @@ check(
 check("AC floor prices are used for the inclusive bill", inclusiveView.draft.subtotalPaise === 40000, `subtotal=${inclusiveView.draft.subtotalPaise}`);
 
 await setTax(0, "exclusive");
+
+// ---------------------------------------------------------------------------
+// Phase 5: reports, admin settings, floors/tables, staff and menu import.
+// ---------------------------------------------------------------------------
+await resetRuntime();
+await sim("occupied");
+const reportOrder = await placeOrder({
+  tableId: tableId,
+  items: [{ variantId: halfNoodles.id, qty: 2 }],
+  clientKey: randomUUID(),
+});
+const reportSession = await openSession();
+if (!reportSession) throw new Error("report test session missing");
+const reportBill = await getBillView(reportSession.id);
+const reportTotal = reportBill.draft.totalPaise;
+await payBill({
+  sessionId: reportSession.id,
+  payments: [{ method: "CASH", amountPaise: reportTotal }],
+  actorId: receptionUser.id,
+});
+
+const activeSettings = await loadSettings();
+const today = businessDateString(new Date(), activeSettings.BUSINESS_DAY_START);
+const yesterday = shiftBusinessDate(today, -1);
+const summary = await getReportSummary({ from: today, to: today });
+const rawBills = await prisma.bill.findMany({
+  where: { status: "PAID" },
+  select: { total: true, billNumber: true },
+});
+const rawItemSum = await prisma.orderItem.aggregate({
+  where: { order: { sessionId: reportSession.id }, cancelled: false },
+  _sum: { qty: true },
+});
+const rawItems = rawItemSum._sum.qty ?? 0;
+check(
+  "report earnings match the raw paid bills",
+  summary.earningsPaise === rawBills.reduce((sum, bill) => sum + bill.total, 0),
+  `report=${summary.earningsPaise} raw=${rawBills.reduce((sum, bill) => sum + bill.total, 0)}`,
+);
+check(
+  "report counts match raw bills/orders/items",
+  summary.billsCount === rawBills.length &&
+    summary.ordersCount === 1 &&
+    summary.itemsCount === rawItems &&
+    summary.itemsCount === 2,
+  `bills=${summary.billsCount} orders=${summary.ordersCount} items=${summary.itemsCount}`,
+);
+check(
+  "report floor and payment breakdowns match",
+  summary.byFloor.length === 1 &&
+    summary.byFloor[0]?.zoneName === "Ground Floor" &&
+    summary.byFloor[0]?.earningsPaise === reportTotal &&
+    summary.byPayment[0]?.method === "CASH" &&
+    summary.byPayment[0]?.amountPaise === reportTotal,
+  `${summary.byFloor.map((row) => row.zoneName).join(",")} / ${summary.byPayment.map((row) => row.method).join(",")}`,
+);
+check(
+  "report top dishes include the ordered item",
+  summary.topDishes.some((dish) => dish.name === "Veg Hakka Noodles" && dish.qty === 2),
+);
+const csv = await getReportCsv({ from: today, to: today });
+check(
+  "CSV export contains the bill number and item",
+  csv.csv.includes(reportBill.bill?.billNumber ?? "missing") && csv.csv.includes("Veg Hakka Noodles"),
+);
+
+const lateNight = new Date(
+  businessDayStartFromDate(today, activeSettings.BUSINESS_DAY_START).getTime() - 3 * 60 * 60 * 1000,
+);
+await prisma.bill.update({ where: { sessionId: reportSession.id }, data: { paidAt: lateNight } });
+const todayAfterLate = await getReportSummary({ from: today, to: today });
+const yesterdayAfterLate = await getReportSummary({ from: yesterday, to: yesterday });
+check(
+  "a 02:00 IST bill belongs to the previous business day",
+  todayAfterLate.billsCount === 0 && yesterdayAfterLate.billsCount === 1,
+  `today=${todayAfterLate.billsCount} yesterday=${yesterdayAfterLate.billsCount}`,
+);
+await resetRuntime();
+
+const settingsResult = await updateAdminSettings({
+  settings: { DECIDE_WINDOW_S: 240, TAX_RATE_PERCENT: 5, TAX_MODE: "exclusive" },
+  actorId: adminUser.id,
+});
+check(
+  "admin settings update timers and tax",
+  settingsResult.DECIDE_WINDOW_S === 240 && settingsResult.TAX_RATE_PERCENT === 5,
+);
+let invalidSettingRejected = false;
+try {
+  await updateAdminSettings({ settings: { DECIDE_WINDOW_S: 1 }, actorId: adminUser.id });
+} catch {
+  invalidSettingRejected = true;
+}
+check("admin rejects an invalid timer value", invalidSettingRejected);
+await updateAdminSettings({
+  settings: { DECIDE_WINDOW_S: 180, TAX_RATE_PERCENT: 0, TAX_MODE: "exclusive" },
+  actorId: adminUser.id,
+});
+check("settings were restored for the rest of the suite", (await loadSettings()).DECIDE_WINDOW_S === 180);
+
+const adminZone = await createZone({ name: "Acceptance Floor", actorId: adminUser.id });
+const adminTable = await createTable({
+  zoneId: adminZone.id,
+  label: "T1",
+  seats: 2,
+  actorId: adminUser.id,
+});
+await updateTable({ id: adminTable.id, seats: 6, actorId: adminUser.id });
+const floorsAfterCreate = await getAdminFloors();
+const createdZone = floorsAfterCreate.zones.find((zone) => zone.id === adminZone.id);
+check(
+  "admin can create and edit a floor and table",
+  createdZone?.tables[0]?.label === "T1" && createdZone.tables[0]?.seats === 6,
+);
+await deleteTable({ id: adminTable.id, actorId: adminUser.id });
+await deleteZone({ id: adminZone.id, actorId: adminUser.id });
+const floorsAfterDelete = await getAdminFloors();
+check(
+  "admin can delete an empty floor and table",
+  !floorsAfterDelete.zones.some((zone) => zone.id === adminZone.id),
+);
+
+const createdStaff = await createStaff({
+  name: "Acceptance Waiter",
+  role: "WAITER",
+  pin: "9876",
+  actorId: adminUser.id,
+});
+let staffRow = await prisma.user.findUniqueOrThrow({ where: { id: createdStaff.id } });
+check("admin can create staff with a PIN", verifySecret("9876", staffRow.pinHash));
+await updateStaff({ id: createdStaff.id, pin: "6543", actorId: adminUser.id });
+staffRow = await prisma.user.findUniqueOrThrow({ where: { id: createdStaff.id } });
+check(
+  "admin can reset a staff PIN",
+  verifySecret("6543", staffRow.pinHash) && !verifySecret("9876", staffRow.pinHash),
+);
+let badPinRejected = false;
+try {
+  await createStaff({ name: "Bad PIN", role: "WAITER", pin: "12", actorId: adminUser.id });
+} catch {
+  badPinRejected = true;
+}
+check("admin rejects an invalid staff PIN", badPinRejected);
+let selfDeactivateRejected = false;
+try {
+  await updateStaff({ id: adminUser.id, active: false, actorId: adminUser.id });
+} catch {
+  selfDeactivateRejected = true;
+}
+check("admin cannot deactivate their own account", selfDeactivateRejected);
+await updateStaff({ id: createdStaff.id, active: false, actorId: adminUser.id });
+check(
+  "admin can deactivate staff",
+  (await prisma.user.findUniqueOrThrow({ where: { id: createdStaff.id } })).active === false,
+);
+await prisma.user.delete({ where: { id: createdStaff.id } });
+
+const importGroup: MenuImportGroup = {
+  category: "Acceptance Import",
+  item: "Test Momo",
+  localName: null,
+  isVeg: true,
+  needsKitchen: true,
+  variants: [
+    { label: "Half", prices: { groundPaise: 5000, firstPaise: 6000 } },
+    { label: "Full", prices: { groundPaise: 9000, firstPaise: null } },
+  ],
+};
+const imported = await importMenuGroups({ groups: [importGroup], actorId: adminUser.id });
+const importedMenu = await getMenuForZone(ground.id);
+const importedCategory = importedMenu.categories.find((entry) => entry.name === "Acceptance Import");
+const importedItem = importedCategory?.items.find((entry) => entry.name === "Test Momo");
+check("menu import creates the item", importedItem !== undefined && imported.variants === 2);
+const groundHalf = importedItem?.variants.find((variant) => variant.label === "Half");
+check(
+  "menu import sets both floor prices",
+  groundHalf?.pricePaise === 5000,
+  `ground=${groundHalf?.pricePaise ?? "none"}`,
+);
+const firstFloorMenu = await getMenuForZone(firstZone.id);
+const firstItem = firstFloorMenu.categories
+  .find((entry) => entry.name === "Acceptance Import")
+  ?.items.find((entry) => entry.name === "Test Momo");
+const firstHalfPrice = firstItem?.variants.find((variant) => variant.label === "Half");
+const firstFullPrice = firstItem?.variants.find((variant) => variant.label === "Full");
+check(
+  "menu import keeps the AC price and flags a missing one",
+  firstHalfPrice?.pricePaise === 6000 && firstFullPrice?.available === false,
+);
+const adminMenu = await getAdminMenu();
+const importedAdminCategory = adminMenu.categories.find((entry) => entry.name === "Acceptance Import");
+const importedAdminItem = importedAdminCategory?.items.find((entry) => entry.name === "Test Momo");
+if (importedAdminItem) {
+  await deleteItem({ id: importedAdminItem.id, actorId: adminUser.id });
+}
+if (importedAdminCategory) {
+  await deleteCategory({ id: importedAdminCategory.id, actorId: adminUser.id });
+}
+check(
+  "admin can delete an imported item and category",
+  !(await getAdminMenu()).categories.some((entry) => entry.name === "Acceptance Import"),
+);
+
 await resetRuntime();
 const failed = results.filter((result) => !result.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
