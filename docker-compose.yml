@@ -16,7 +16,7 @@ x-app: &app
 
 services:
   db:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: "${POSTGRES_USER:-dinesense}"
@@ -64,7 +64,7 @@ services:
     command: ["npm", "run", "start", "-w", "@dinesense/worker"]
 
   caddy:
-    image: caddy:2-alpine
+    image: docker.io/library/caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - web

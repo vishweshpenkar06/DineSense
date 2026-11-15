@@ -62,13 +62,22 @@ docker-compose.yml
 
 ## Quick start (Docker Compose)
 
-Requires Docker with the Compose plugin (x86/ARM mini PC, Ubuntu).
+Requires Docker Engine with Compose v2/v5 (x86 mini PC).
 
 ```bash
+# Fedora, one-time (needs root):
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER"
+# then log out and back in, or run `newgrp docker`
+
 cp .env.example .env        # edit secrets before real use
 docker compose up -d --build
 docker compose run --rm migrate npm run db:seed -w @dinesense/db
 ```
+
+On Ubuntu/Debian install `docker-ce` and `docker-compose-plugin` from Docker's
+official repository. Verify with `docker compose version`. The stack is Docker-only;
+Podman is not a supported install path for this project.
 
 Open <http://localhost:3000> (or the Caddy placeholder at <http://localhost:8080>).
 

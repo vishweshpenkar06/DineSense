@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS base
+FROM docker.io/library/node:22-bookworm-slim AS base
 WORKDIR /app
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates curl \
