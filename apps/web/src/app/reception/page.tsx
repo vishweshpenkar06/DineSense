@@ -283,6 +283,11 @@ export default function ReceptionPage() {
           {notice}
         </div>
       ) : null}
+      {snapshot?.settings.SHADOW_MODE ? (
+        <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          Pilot shadow mode — keep paper bills as the backup until the owner signs off.
+        </div>
+      ) : null}
       {healthStatus && healthStatus !== "ok" ? (
         <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           System health is {healthStatus}. Check Admin → Health (database, worker, disk, backup).

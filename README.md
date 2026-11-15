@@ -3,14 +3,13 @@
 Local-first restaurant operations for a small two-floor Indo-Chinese restaurant.
 One mini PC, no internet required, phones on the LAN.
 
-**Status: Phase 7 — Productization. v1 is complete.** The full product is built:
-core engine, vision, waiter/chef PWAs, reception/billing, admin, camera calibration,
-a first-run setup wizard, installer, backups/restore, updates, health and
-diagnostics, plus the operator documentation. It is ready for a pilot install.
+**Status: Phase 8 — Pilot support. v1 + pilot tooling is complete.** The full
+product is built, including shadow mode, the daily camera-vs-staff accuracy review
+and the pilot checklist. It is ready to install and run a controlled pilot.
 
 ---
 
-## What is built (Phases 1–7)
+## What is built (Phases 1–8)
 
 - Full Prisma data model for the whole product (§9 of the masterplan) with one
   migration, including a partial unique index that enforces one open visit per table.
@@ -118,10 +117,10 @@ reports `degraded` when it cannot keep up.
 
 ### Phase 3 acceptance (staff apps)
 
-- `npm run acceptance`: **114/114** checks across Phases 1–7 (kitchen, takeaway,
+- `npm run acceptance`: **119/119** checks across Phases 1–8 (kitchen, takeaway,
   stock, bills, tax, payments, voids, reopen, reports, admin CRUD, menu import,
-  camera encryption/active filtering/calibration, setup status and guided test).
-- `npm run test:e2e`: **7/7** Playwright tests:
+  camera encryption/active filtering/calibration, setup status and pilot review).
+- `npm run test:e2e`: **8/8** Playwright tests:
   1. waiter seats G3 → orders → chef starts/readies → waiter serves → requests bill,
      across two independent browser contexts;
   2. the waiter phone goes offline mid-order, the order is queued, and after
@@ -134,7 +133,9 @@ reports `degraded` when it cannot keep up.
   6. the owner opens Cameras, calibrates a table zone by drawing four points on the
      raw demo frame, verifies the saved polygon and restores it; recent detections
      and tuning rows are visible;
-  7. a fresh owner is redirected to `/setup`, runs the guided test and finishes.
+  7. a fresh owner is redirected to `/setup`, runs the guided test and finishes;
+  8. shadow mode shows on the waiter screen; the owner sees a camera/staff mismatch
+     in the daily Pilot review and saves a note.
 - HTTPS verified end-to-end through Caddy's internal CA, including staff login; the
   camera proxy returns `image/jpeg` for staff and `401` for anonymous callers.
 
@@ -160,6 +161,15 @@ retention, admin reopen with payment reversal, and inclusive tax
 (`₹400` inclusive at 5% → taxable `₹380.95`, tax `₹19.05`, total unchanged).
 Physical thermal/A4 paper was not available; the print CSS widths and content are
 verified headlessly and need a manual check on the owner's printer.
+
+### Phase 8 acceptance (pilot)
+
+- `SHADOW_MODE` toggles through the admin settings and appears in the snapshot.
+- A manual seat after a camera “empty” event is recorded by the daily review with
+  the table, actor, from/to states, last camera state and a mismatch flag.
+- The pilot note is saved per business day and read back.
+- The E2E checks the waiter shadow banner and the owner's mismatch review/notes.
+- The pilot steps and sign-off checklist are in `docs/PILOT.md`.
 
 ### Phase 7 acceptance (productization)
 
@@ -317,8 +327,8 @@ npm run dev:web               # terminal 2
 ```bash
 npm run test:core             # pure domain tests (no DB)
 npm run typecheck             # all workspaces
-npm run acceptance            # needs migrated + seeded Postgres (114 checks)
-npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000 (7 tests)
+npm run acceptance            # needs migrated + seeded Postgres (119 checks)
+npm run test:e2e              # Playwright; needs the stack at 127.0.0.1:3000 (8 tests)
 docker compose run --rm --no-deps vision pytest   # 36 vision tests
 ```
 
@@ -408,7 +418,9 @@ start and end; menu/zone/table seed data is untouched.
    table zones on the live raw frame, mute a table for five minutes, and review the
    recent detections and tuning CSV (no images).
 8. **Health:** database/worker/disk/backup/clock/cameras and the diagnostics ZIP.
-9. The dev console remains at `/dev` for simulation and diagnostics.
+9. **Pilot:** Shadow mode in Settings; the daily Pilot tab for corrections,
+   mismatches and the fix list; tune from the Cameras tuning log.
+10. The dev console remains at `/dev` for simulation and diagnostics.
 
 ## Camera setup (non-developer)
 
@@ -514,6 +526,17 @@ logs -f worker` shows a tick failure if anything is wrong.
 | C9 | Set tax 5% exclusive in Settings; print a bill | CGST/SGST/round-off on the bill |
 | C10 | Try a 1s decision window / a 2-digit PIN | Both rejected with a clear message |
 
+### Pilot verification (Phase 8)
+
+| # | Do this | Expect |
+|---|---|---|
+| F1 | Enable Shadow mode | Amber pilot banner on waiter/chef/reception/admin |
+| F2 | Seat a table after the camera reported empty | Admin → Pilot shows a mismatch with the table/actor/states |
+| F3 | Run a normal service day | Daily review lists overrides, camera events, abandoned tables and alerts |
+| F4 | Write the pilot note | Saved for that business day; visible next morning |
+| F5 | Tune seated/empty windows | Cameras tuning log shows the effect; review mismatches fall |
+| F6 | Follow docs/PILOT.md | Shadow days → tuning → paper-backup week → sign-off |
+
 ### Productization verification (Phase 7)
 
 | # | Do this | Expect |
@@ -554,7 +577,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 | V6 | Open `http://127.0.0.1:8100/health` | Per-camera status, FPS, queue and config source |
 | V7 | Open `http://127.0.0.1:8100/snapshot/<camera_id>.jpg` | Annotated zones (green/red) and FPS header |
 
-## API surface (Phases 1–7)
+## API surface (Phases 1–8)
 
 - `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me`
 - `GET /api/snapshot` · `GET /api/stream` (SSE, role-filtered)
@@ -580,6 +603,7 @@ logs -f worker` shows a tick failure if anything is wrong.
   `GET/PUT /api/admin/settings` · `PUT /api/admin/restaurant`
 - Reports: `GET /api/reports/summary?preset|from&to` ·
   `GET /api/reports/export.csv?preset|from&to`
+- Pilot: `GET /api/admin/pilot/review?date` · `PUT /api/admin/pilot/notes`
 - Setup: `GET /api/admin/setup/status` · `POST /api/admin/setup/complete` ·
   `POST /api/admin/setup/reopen` · `POST /api/admin/setup/demo`
 - Operations: `GET /api/health` (DB/worker/disk/backup/clock/cameras) ·
@@ -595,7 +619,7 @@ logs -f worker` shows a tick failure if anything is wrong.
   `GET /tuning` — all but health require the Bearer `VISION_SHARED_SECRET`
 - Dev-only: `POST /api/dev/simulate` · `POST /api/dev/order` · `POST /api/dev/time-skip` · `GET /api/dev/events`
 
-## Assumptions and defaults (Phases 1–7)
+## Assumptions and defaults (Phases 1–8)
 
 - **Vision debounce lives in the vision service**, so an incoming `occupied`/`empty`
   event is treated as already confirmed. The app additionally waits
@@ -694,6 +718,13 @@ logs -f worker` shows a tick failure if anything is wrong.
   confirmation; test a restore before go-live.
 - **Power cuts:** Docker restart policies + Postgres volume + DB-stored deadlines.
   After boot the stack resumes; the worker processes overdue deadlines immediately.
+- **Shadow mode** is informational: all alerts/orders/bills remain active; staff
+  keep paper as the fallback. The daily review compares `table.manual_set` audit
+  rows with the last vision event before each correction and flags “camera empty but
+  seated” or “camera occupied but freed/cleaned”. Notes are per business day.
+- **Pilot tuning:** use the Cameras tuning log; the seated/empty windows are global
+  settings. Change one at a time and compare the next day's review. Sign-off
+  criteria live in `docs/PILOT.md`.
 - **Diagnostics:** the ZIP contains health, settings, profile, staff/camera metadata,
   audit/detection logs and the tuning CSV; no video, images, RTSP URLs or secrets.
   Host service logs use `scripts/diagnostics.sh`.
@@ -709,6 +740,11 @@ logs -f worker` shows a tick failure if anything is wrong.
   `diagnostics.sh`, structured health and a one-click diagnostics ZIP.
 - **Operator docs:** install, hardware/placement, HTTPS/CA, and one-page quick guides
   for waiter, chef, receptionist and owner.
+- **Pilot support:** a `SHADOW_MODE` setting with banners on every staff screen, a
+  daily **Admin → Pilot** review comparing manual table corrections with the last
+  camera state and flagging mismatches, abandoned tables and waiting alerts, plus a
+  per-day pilot note/fix list. The `docs/PILOT.md` checklist covers shadow days,
+  threshold tuning from the tuning log, the paper-backup week and sign-off.
 - **Staff:** admin accounts need a password (6+); staff use a 4–6 digit PIN; PINs and
   passwords are hashed. The owner cannot deactivate their own account. Staff PINs
   are not required to be globally unique (login checks each active hash); keep them
@@ -732,7 +768,7 @@ logs -f worker` shows a tick failure if anything is wrong.
 
 ## Not built yet
 
-v1 scope is complete. The §18 exclusions (QR ordering, payment gateway, tips,
-inventory, multi-restaurant, native apps, voice, ESC/POS, table merging,
-reservations, staff recognition, loyalty, WhatsApp/SMS) remain deliberately out of
-v1.
+Phases 1–8 are complete and the product is ready for a pilot install. The §18
+exclusions (QR ordering, payment gateway, tips, inventory, multi-restaurant, native
+apps, voice, ESC/POS, table merging, reservations, staff recognition, loyalty,
+WhatsApp/SMS) remain deliberately out of v1.

@@ -40,6 +40,7 @@ export function SettingsPanel({
           settings.BUSINESS_DAY_START = String(form.get("BUSINESS_DAY_START") ?? "05:00");
           settings.TAX_MODE = String(form.get("TAX_MODE") ?? "exclusive");
           settings.BILL_NUMBER_PREFIX = String(form.get("BILL_NUMBER_PREFIX") ?? "DS");
+          settings.SHADOW_MODE = form.get("SHADOW_MODE") === "on";
           void run(async () => {
             await apiFetch("/api/admin/settings", {
               method: "PUT",
@@ -97,6 +98,10 @@ export function SettingsPanel({
               defaultValue={data.settings.BILL_NUMBER_PREFIX}
               className={`${INPUT} mt-1`}
             />
+          </label>
+          <label className="flex items-center gap-2 self-end pb-2 text-xs text-slate-300">
+            <input name="SHADOW_MODE" type="checkbox" defaultChecked={data.settings.SHADOW_MODE} />
+            Shadow mode (pilot: keep paper as backup)
           </label>
         </div>
         <button type="submit" className={`${BTN_PRIMARY} mt-3`} disabled={busy}>

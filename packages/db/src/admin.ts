@@ -883,8 +883,9 @@ export async function updateAdminSettings(input: {
     "BUSINESS_DAY_START",
     "TAX_MODE",
     "BILL_NUMBER_PREFIX",
+    "SHADOW_MODE",
   ]);
-  const updates: Array<{ key: string; value: number | string }> = [];
+  const updates: Array<{ key: string; value: number | string | boolean }> = [];
 
   for (const [key, raw] of Object.entries(input.settings)) {
     if (!allowed.has(key)) throw new DomainError(`Unknown setting ${key}`);
@@ -895,6 +896,9 @@ export async function updateAdminSettings(input: {
       updates.push({ key, value: raw });
     } else if (key === "TAX_MODE") {
       if (raw !== "exclusive" && raw !== "inclusive") throw new DomainError("Invalid tax mode");
+      updates.push({ key, value: raw });
+    } else if (key === "SHADOW_MODE") {
+      if (typeof raw !== "boolean") throw new DomainError("Shadow mode must be true or false");
       updates.push({ key, value: raw });
     } else if (key === "BILL_NUMBER_PREFIX") {
       if (typeof raw !== "string" || !/^[A-Za-z0-9]{1,8}$/.test(raw)) {

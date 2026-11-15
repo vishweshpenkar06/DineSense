@@ -82,6 +82,7 @@ export type Snapshot = {
     TICKET_AMBER_S: number;
     TICKET_RED_S: number;
     BUSINESS_DAY_START: string;
+    SHADOW_MODE: boolean;
   };
   tables: SnapshotTable[];
   tasks: SnapshotTask[];
@@ -454,4 +455,45 @@ export type VisionDetectionDto = {
 export type TuningResponseDto = {
   columns: string[];
   rows: Array<Record<string, string>>;
+};
+
+export type PilotOverrideDto = {
+  id: string;
+  tableId: string;
+  tableLabel: string | null;
+  zoneName: string | null;
+  actorName: string;
+  at: string;
+  fromState: string;
+  toState: string;
+  visionState: string | null;
+  mismatch: boolean;
+};
+
+export type PilotTableRowDto = {
+  tableId: string;
+  label: string;
+  zoneName: string;
+  occupiedEvents: number;
+  emptyEvents: number;
+  overrides: number;
+  mismatches: number;
+};
+
+export type PilotReviewDto = {
+  date: string;
+  from: string;
+  to: string;
+  shadowMode: boolean;
+  summary: {
+    overrides: number;
+    tablesTouched: number;
+    mismatches: number;
+    cameraEvents: number;
+    abandonedVisits: number;
+    needsOrderAlerts: number;
+  };
+  tables: PilotTableRowDto[];
+  overrides: PilotOverrideDto[];
+  notes: string;
 };

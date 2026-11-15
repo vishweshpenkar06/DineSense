@@ -10,6 +10,7 @@ describe("settings", () => {
     expect(DEFAULT_SETTINGS.TAX_RATE_PERCENT).toBe(0);
     expect(DEFAULT_SETTINGS.TAX_MODE).toBe("exclusive");
     expect(DEFAULT_SETTINGS.BILL_NUMBER_PREFIX).toBe("DS");
+    expect(DEFAULT_SETTINGS.SHADOW_MODE).toBe(false);
   });
 
   it("merges database overrides over defaults", () => {
@@ -44,6 +45,12 @@ describe("settings", () => {
     expect(settings.TAX_MODE).toBe("inclusive");
     expect(settings.BILL_NUMBER_PREFIX).toBe("REST");
     expect(mergeSettings({ TAX_RATE_PERCENT: 0 }).TAX_RATE_PERCENT).toBe(0);
+  });
+
+  it("accepts the shadow-mode flag", () => {
+    expect(mergeSettings({ SHADOW_MODE: true }).SHADOW_MODE).toBe(true);
+    expect(mergeSettings({ SHADOW_MODE: "false" }).SHADOW_MODE).toBe(false);
+    expect(mergeSettings({ SHADOW_MODE: "x" }).SHADOW_MODE).toBe(false);
   });
 
   it("ignores invalid tax settings", () => {

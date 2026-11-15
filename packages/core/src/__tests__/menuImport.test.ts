@@ -43,7 +43,7 @@ Starters,Chicken Lollipop,,Half,130,150,N,Y
     expect(result.errors).toEqual([]);
     expect(result.groups).toHaveLength(2);
     expect(result.groups[0]!.variants).toHaveLength(2);
-    expect(result.groups[0]!.variants[0].prices).toEqual({ groundPaise: 9000, firstPaise: 10000 });
+    expect(result.groups[0]!.variants[0]!.prices).toEqual({ groundPaise: 9000, firstPaise: 10000 });
     expect(result.groups[0]!.localName).toBe("वेज हक्का");
     expect(result.groups[1]!.isVeg).toBe(false);
   });
@@ -52,7 +52,7 @@ Starters,Chicken Lollipop,,Half,130,150,N,Y
     const result = normalizeMenuRows(parseCsv(`${HEADER}
 Noodles,Veg Hakka,,Half,90,,Y,Y
 `));
-    expect(result.groups[0]!.variants[0].prices).toEqual({ groundPaise: 9000, firstPaise: null });
+    expect(result.groups[0]!.variants[0]!.prices).toEqual({ groundPaise: 9000, firstPaise: null });
     expect(result.warnings[0]!.message).toMatch(/AC price/);
   });
 

@@ -17,12 +17,13 @@ import { useCallback, useEffect, useState } from "react";
 import { CamerasPanel } from "./cameras-panel";
 import { FloorsPanel } from "./floors-panel";
 import { HealthPanel } from "./health-panel";
+import { PilotPanel } from "./pilot-panel";
 import { MenuPanel } from "./menu-panel";
 import { SettingsPanel } from "./settings-panel";
 import { StaffPanel } from "./staff-panel";
 import { BTN, BTN_PRIMARY, CARD, duration, money, type Run } from "./ui";
 
-type Tab = "overview" | "menu" | "floors" | "cameras" | "staff" | "settings" | "health";
+type Tab = "overview" | "menu" | "floors" | "cameras" | "staff" | "settings" | "health" | "pilot";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -190,8 +191,15 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {snapshot?.settings.SHADOW_MODE ? (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          Pilot shadow mode is ON — keep the paper pad as the source of truth while you compare
+          the app with daily service.
+        </div>
+      ) : null}
+
       <nav className="flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1">
-        {(["overview", "menu", "floors", "cameras", "staff", "settings", "health"] as Tab[]).map((entry) => (
+        {(["overview", "menu", "floors", "cameras", "staff", "settings", "pilot", "health"] as Tab[]).map((entry) => (
           <button
             key={entry}
             type="button"
@@ -366,6 +374,7 @@ export default function AdminPage() {
       {tab === "settings" && settingsData ? (
         <SettingsPanel data={settingsData} busy={busy} run={run} onChanged={loadSettings} />
       ) : null}
+      {tab === "pilot" ? <PilotPanel /> : null}
       {tab === "health" ? <HealthPanel /> : null}
     </main>
   );

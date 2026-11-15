@@ -64,9 +64,11 @@ import {
   cancelOrderItem,
   buildOrderContext,
   completeSetup,
+  getPilotReview,
   getSetupStatus,
   reopenSetup,
   runSetupDemo,
+  savePilotNotes,
   workerLastTick,
   workerTick,
 } from "../src";
@@ -1112,6 +1114,44 @@ check(
 );
 await completeSetup(adminUser.id);
 check("setup completes and persists", (await getSetupStatus()).complete === true);
+
+// ---------------------------------------------------------------------------
+// Phase 8: shadow mode and the daily pilot accuracy review.
+// ---------------------------------------------------------------------------
+await updateAdminSettings({ settings: { SHADOW_MODE: true }, actorId: adminUser.id });
+check("shadow mode can be enabled", (await loadSettings()).SHADOW_MODE === true);
+
+await resetRuntime();
+await sim("empty");
+await setTableStateManually({ tableId, target: "occupied", actorId: adminUser.id });
+const pilotSettings = await loadSettings();
+const pilotDate = businessDateString(new Date(), pilotSettings.BUSINESS_DAY_START);
+const pilot = await getPilotReview({ date: pilotDate });
+check(
+  "daily review counts manual corrections and camera events",
+  pilot.summary.overrides >= 1 && pilot.summary.cameraEvents >= 1,
+  `overrides=${pilot.summary.overrides} events=${pilot.summary.cameraEvents}`,
+);
+check(
+  "a manual seat after an empty detection is flagged as a mismatch",
+  pilot.summary.mismatches >= 1 &&
+    pilot.overrides.some(
+      (override) =>
+        override.tableLabel === "G3" &&
+        override.visionState === "empty" &&
+        override.toState === "occupied" &&
+        override.mismatch,
+    ),
+  `mismatches=${pilot.summary.mismatches}`,
+);
+await savePilotNotes({ date: pilotDate, note: "Pilot acceptance note", actorId: adminUser.id });
+check(
+  "the daily pilot note is saved",
+  (await getPilotReview({ date: pilotDate })).notes === "Pilot acceptance note",
+);
+await updateAdminSettings({ settings: { SHADOW_MODE: false }, actorId: adminUser.id });
+check("shadow mode can be disabled", (await loadSettings()).SHADOW_MODE === false);
+await prisma.setting.deleteMany({ where: { key: `PILOT_NOTE_${pilotDate}` } });
 
 await resetRuntime();
 const failed = results.filter((result) => !result.pass);

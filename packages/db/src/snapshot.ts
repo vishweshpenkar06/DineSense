@@ -144,6 +144,7 @@ export async function buildSnapshot(me: {
       TICKET_AMBER_S: settings.TICKET_AMBER_S,
       TICKET_RED_S: settings.TICKET_RED_S,
       BUSINESS_DAY_START: settings.BUSINESS_DAY_START,
+      SHADOW_MODE: settings.SHADOW_MODE,
     },
     tables: tableDtos,
     tasks: taskDtos,

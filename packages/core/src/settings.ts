@@ -11,6 +11,7 @@ export type Settings = {
   TICKET_AMBER_S: number;
   TICKET_RED_S: number;
   VISION_EVENT_RETENTION_DAYS: number;
+  SHADOW_MODE: boolean;
   BUSINESS_DAY_START: string;
   TAX_RATE_PERCENT: number;
   TAX_MODE: TaxMode;
@@ -28,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   TICKET_AMBER_S: 600,
   TICKET_RED_S: 1200,
   VISION_EVENT_RETENTION_DAYS: 30,
+  SHADOW_MODE: false,
   BUSINESS_DAY_START: "05:00",
   TAX_RATE_PERCENT: 0,
   TAX_MODE: "exclusive",
@@ -67,6 +69,13 @@ export function mergeSettings(raw: Record<string, unknown> | null | undefined): 
   const taxMode = raw.TAX_MODE;
   if (taxMode === "inclusive" || taxMode === "exclusive") {
     merged.TAX_MODE = taxMode;
+  }
+
+  const shadow = raw.SHADOW_MODE;
+  if (typeof shadow === "boolean") {
+    merged.SHADOW_MODE = shadow;
+  } else if (shadow === "true" || shadow === "false") {
+    merged.SHADOW_MODE = shadow === "true";
   }
 
   const prefix = raw.BILL_NUMBER_PREFIX;

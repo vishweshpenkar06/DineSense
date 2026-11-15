@@ -15,15 +15,14 @@ export async function loginAdminApi(request: APIRequestContext): Promise<void> {
 
 export async function resetTables(request: APIRequestContext): Promise<void> {
   const reset = await request.post("/api/dev/reset");
-  if (reset.ok()) return;
-  const response = await request.get("/api/snapshot");
-  expect(response.ok()).toBeTruthy();
-  const snapshot = (await response.json()) as {
-    tables: Array<{ id: string }>;
-  };
-  for (const table of snapshot.tables) {
-    await request.post(`/api/tables/${table.id}/state`, { data: { state: "free" } });
-  }
+  expect(reset.ok()).toBeTruthy();
+  await expect
+    .poll(async () => {
+      const response = await request.get("/api/kitchen/tickets");
+      const data = (await response.json()) as { tickets: unknown[] };
+      return data.tickets.length;
+    })
+    .toBe(0);
 }
 
 export function tableCard(page: Page, label: string) {

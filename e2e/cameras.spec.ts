@@ -77,6 +77,14 @@ test("owner calibrates a table zone and reviews detections and tuning", async ({
     });
   }
 
+  const snapshot = (await (await request.get("/api/snapshot")).json()) as {
+    tables: Array<{ id: string }>;
+  };
+  const firstTable = snapshot.tables[0];
+  if (firstTable) {
+    await request.post("/api/dev/simulate", { data: { tableId: firstTable.id, state: "occupied" } });
+  }
+
   await expect(page.getByText("Recent detections")).toBeVisible();
   await expect(page.getByText("Tuning log")).toBeVisible();
   await expect

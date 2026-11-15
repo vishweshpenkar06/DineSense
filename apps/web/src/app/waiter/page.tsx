@@ -230,6 +230,12 @@ export default function WaiterPage() {
 
       <ShiftBar unlocked={shift.unlocked} screenAwake={shift.screenAwake} onStart={() => void shift.start()} />
 
+      {snapshot.settings.SHADOW_MODE ? (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Pilot shadow mode — the paper pad is still the backup. Use the app as normal.
+        </div>
+      ) : null}
+
       {error ? (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {error}
