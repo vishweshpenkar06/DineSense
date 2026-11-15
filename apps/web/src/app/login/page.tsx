@@ -104,9 +104,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-slate-500">
-          Dev seeds: waiter 1111 · chef 2222 · receptionist 3333 · admin password admin123
-        </p>
       </div>
     </main>
   );

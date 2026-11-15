@@ -31,7 +31,7 @@ export default async function Home() {
           Sign in
         </Link>
         <span className="text-sm text-slate-500">
-          Dev console: admin / admin123 · waiter PIN 1111
+          Staff PINs are created by the owner. Development seeds are in the README.
         </span>
       </div>
     </main>
