@@ -7,6 +7,7 @@ import type {
   AdminStaffDto,
   MenuImportResult,
 } from "@dinesense/core";
+import { Brand, BrandMark } from "@/components/brand";
 import { ConnectionBadge } from "@/components/connection-badge";
 import { errorMessage, getJson, postJson } from "@/lib/client";
 import { useSnapshotLive } from "@/lib/live";
@@ -197,33 +198,40 @@ export default function SetupPage() {
 
   if (unauthorized) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md items-center justify-center px-5">
-        <Link href="/login" className="rounded-lg bg-emerald-500 px-5 py-2.5 font-semibold text-slate-950">
-          Sign in
-        </Link>
+      <main className="mx-auto flex min-h-[100dvh] max-w-md items-center justify-center px-5">
+        <div className="w-full rounded-3xl border border-line bg-surface p-8 text-center">
+          <BrandMark className="mx-auto h-10 w-10 text-accent" />
+          <h1 className="mt-5 font-display text-2xl">Set up DineSense</h1>
+          <Link href="/login" className={`${BTN_PRIMARY} mt-5 w-full py-3`}>
+            Sign in
+          </Link>
+        </div>
       </main>
     );
   }
   if (snapshot && !isAdmin) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md items-center justify-center px-5 text-center">
-        <p className="text-sm text-slate-400">The setup wizard is for the owner/admin account.</p>
+      <main className="mx-auto flex min-h-[100dvh] max-w-md items-center justify-center px-5 text-center">
+        <p className="text-sm text-muted">The setup wizard is for the owner/admin account.</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-4 px-4 py-5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-400">
-            DineSense setup
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {status?.complete ? "Review your setup" : "Set up your restaurant"}
-          </h1>
+    <main className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <BrandMark className="h-8 w-8 shrink-0 text-accent sm:hidden" />
+          <Brand compact className="hidden sm:inline-flex" />
+          <span className="hidden h-7 w-px bg-line sm:block" />
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">Setup</p>
+            <h1 className="mt-1 font-display text-[1.65rem] font-medium leading-none tracking-[-0.02em] sm:text-3xl">
+              {status?.complete ? "Review your setup" : "Set up your restaurant"}
+            </h1>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <ConnectionBadge status={stream} />
           <Link href="/admin" className={BTN}>
             Exit to admin
@@ -231,36 +239,40 @@ export default function SetupPage() {
         </div>
       </header>
 
-      {status?.complete ? (
-        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          Setup is marked complete. You can re-run the test or finish again.
-        </div>
-      ) : null}
-      {error ? (
-        <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </div>
-      ) : null}
-      {notice ? (
-        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          {notice}
-        </div>
-      ) : null}
+      <div className="mt-4 space-y-2">
+        {status?.complete ? (
+          <div className="rounded-2xl border border-jade/25 bg-jade/[0.07] px-4 py-3 text-sm text-jade">
+            Setup is marked complete. You can re-run the test or finish again.
+          </div>
+        ) : null}
+        {error ? (
+          <div className="rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
+            {error}
+          </div>
+        ) : null}
+        {notice ? (
+          <div className="rounded-2xl border border-jade/25 bg-jade/[0.07] px-4 py-3 text-sm text-jade">
+            {notice}
+          </div>
+        ) : null}
+      </div>
 
-      <nav className="flex gap-1 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60 p-1">
+      <nav className="mt-4 flex gap-1 overflow-x-auto rounded-2xl border border-line bg-surface p-1">
         {STEPS.map((label, index) => (
           <button
             key={label}
             type="button"
             onClick={() => setStep(index)}
-            className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium ${
-              step === index ? "bg-emerald-500 text-slate-950" : "text-slate-300"
+            className={`shrink-0 rounded-xl px-3 py-2 text-xs font-medium transition ${
+              step === index ? "bg-accent text-canvas" : "text-muted hover:bg-raised hover:text-ink"
             }`}
           >
             {index + 1}. {label}
           </button>
         ))}
       </nav>
+
+      <div className="mt-4 space-y-4">
 
       {step === 0 ? (
         <form className={CARD} onSubmit={(event) => void saveProfile(event)}>
@@ -479,6 +491,7 @@ export default function SetupPage() {
             Next
           </button>
         ) : null}
+      </div>
       </div>
     </main>
   );

@@ -168,6 +168,7 @@ export function FloorsPanel({
                     </td>
                     <td className="pr-2 text-xs text-slate-400">{table.state}</td>
                     <td className="text-right">
+                      <div className="flex items-center justify-end gap-2">
                       <form
                         id={`table-${table.id}`}
                         onSubmit={(event) => {
@@ -211,6 +212,7 @@ export function FloorsPanel({
                       >
                         Remove
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

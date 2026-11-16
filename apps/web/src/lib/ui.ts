@@ -12,14 +12,25 @@ export const STATE_LABEL: Record<TableState, string> = {
 };
 
 export const STATE_STYLE: Record<TableState, string> = {
-  free: "border-emerald-500/30 bg-emerald-500/5",
-  occupied: "border-amber-400/40 bg-amber-400/10",
-  needs_order: "border-red-500/60 bg-red-500/15",
-  ordered: "border-sky-500/40 bg-sky-500/10",
-  food_ready: "border-violet-500/40 bg-violet-500/10",
-  dining: "border-slate-600/60 bg-slate-800/40",
-  bill_requested: "border-orange-500/40 bg-orange-500/10",
-  needs_cleaning: "border-zinc-500/50 bg-zinc-500/10",
+  free: "border-line bg-surface",
+  occupied: "border-accent/25 bg-accent/[0.035]",
+  needs_order: "border-coral/35 bg-coral/[0.05]",
+  ordered: "border-sky-400/25 bg-sky-400/[0.04]",
+  food_ready: "border-iris/35 bg-iris/[0.05]",
+  dining: "border-line bg-surface",
+  bill_requested: "border-clay/35 bg-clay/[0.05]",
+  needs_cleaning: "border-slate-500/25 bg-slate-500/[0.04]",
+};
+
+export const STATE_DOT: Record<TableState, string> = {
+  free: "bg-jade",
+  occupied: "bg-accent",
+  needs_order: "bg-coral",
+  ordered: "bg-sky-400",
+  food_ready: "bg-iris",
+  dining: "bg-slate-400",
+  bill_requested: "bg-clay",
+  needs_cleaning: "bg-slate-500",
 };
 
 export function formatCountdown(totalSeconds: number): string {

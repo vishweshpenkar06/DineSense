@@ -6,8 +6,43 @@
   color-scheme: dark;
 }
 
+html {
+  background: #0b0a08;
+}
+
 body {
   font-variant-numeric: tabular-nums;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(229, 177, 76, 0.06), transparent 60%),
+    #0b0a08;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+::selection {
+  background: #e5b14c;
+  color: #0b0a08;
+}
+
+:focus-visible {
+  outline: 2px solid #e5b14c;
+  outline-offset: 2px;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select,
+textarea {
+  color-scheme: dark;
 }
 
 select,
@@ -28,15 +63,22 @@ button {
 
 .bill-print {
   width: 100%;
-  max-width: 210mm;
+  max-width: 380px;
   margin: 0 auto;
-  border-radius: 0.75rem;
-  background: white;
-  color: #0f172a;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid #e6dbc8;
+  border-top: 3px solid #24201a;
+  border-radius: 2px;
+  background: #f8f2e6;
+  color: #241f18;
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
-  line-height: 1.45;
-  padding: 10mm;
+  line-height: 1.5;
+  padding: 8mm 7mm;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.75);
+}
+
+.bill-print table {
+  font-variant-numeric: tabular-nums;
 }
 
 .bill-print table {
@@ -57,8 +99,8 @@ button {
 
 .bill-print hr {
   border: 0;
-  border-top: 1px dashed #94a3b8;
-  margin: 6px 0;
+  border-top: 1px dashed #b9a98f;
+  margin: 7px 0;
 }
 
 @media print {
@@ -79,7 +121,11 @@ button {
     max-width: 72mm;
     padding: 2mm;
     font-size: 9.5px;
+    border: 0;
     border-radius: 0;
+    background: #fff;
+    color: #000;
+    box-shadow: none;
   }
 
   .bill-print[data-format="a4"] {

@@ -1,28 +1,24 @@
 import type { StreamStatus } from "@/lib/live";
 
 export function ConnectionBadge({ status }: { status: StreamStatus }) {
-  const styles =
-    status === "live"
-      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-      : status === "connecting"
-        ? "border-amber-500/40 bg-amber-500/15 text-amber-200"
-        : "border-red-500/40 bg-red-500/15 text-red-300";
-  const label =
-    status === "live" ? "Live" : status === "connecting" ? "Connecting…" : "Reconnecting…";
+  const live = status === "live";
+  const connecting = status === "connecting";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${styles}`}
+      className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+        live
+          ? "border-jade/25 bg-jade/10 text-jade"
+          : connecting
+            ? "border-accent/25 bg-accent/10 text-accent"
+            : "border-coral/30 bg-coral/10 text-coral"
+      }`}
     >
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          status === "live"
-            ? "bg-emerald-400"
-            : status === "connecting"
-              ? "bg-amber-300"
-              : "bg-red-400"
+          live ? "bg-jade" : connecting ? "animate-pulse bg-accent" : "animate-pulse bg-coral"
         }`}
       />
-      {label}
+      {live ? "Live" : connecting ? "Connecting" : "Reconnecting"}
     </span>
   );
 }

@@ -7,7 +7,8 @@ coverage/
 .env.local
 *.log
 backups/
-data/
+data/*
+!data/menu-chinese-chef.csv
 .DS_Store
 *.tsbuildinfo
 tmp/
@@ -19,3 +20,6 @@ caddy-root.crt
 test-results/
 playwright-report/
 blob-report/
+
+Menu_AC*.pdf
+Menu non Ac.pdf

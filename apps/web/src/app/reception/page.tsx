@@ -1,17 +1,26 @@
 "use client";
 
 import type { BillViewDto, OpenBillRowDto } from "@dinesense/core";
+import { Brand, BrandMark } from "@/components/brand";
 import { ConnectionBadge } from "@/components/connection-badge";
 import { errorMessage, getJson, postJson } from "@/lib/client";
 import { useSnapshotLive } from "@/lib/live";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  LogOut,
+  Printer,
+  ReceiptText,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const BTN =
-  "rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-200 disabled:opacity-40";
+  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium text-ink transition hover:border-slate-600 hover:bg-raised disabled:opacity-40";
 const BTN_PRIMARY =
-  "rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40";
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-canvas transition hover:bg-[#efc05e] disabled:bg-raised disabled:text-faint disabled:hover:bg-raised";
 
 function money(paise: number): string {
   return `₹${(paise / 100).toFixed(2)}`;
@@ -67,6 +76,7 @@ export default function ReceptionPage() {
   const loadBill = useCallback(async (sessionId: string) => {
     try {
       setBill(await getJson<BillViewDto>(`/api/bills/${sessionId}`));
+      setError(null);
     } catch (caught) {
       setError(errorMessage(caught));
     }
@@ -255,158 +265,176 @@ export default function ReceptionPage() {
       </main>
     );
   }
-
   return (
-    <main className="min-h-screen px-4 py-4">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Reception</h1>
-          <p className="text-xs text-slate-400">
-            {snapshot?.me.name ?? "Reception"} · {sessions.length} open visits
-          </p>
+    <main className="mx-auto min-h-[100dvh] max-w-7xl px-4 pb-10 pt-5 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <BrandMark className="h-8 w-8 shrink-0 text-accent sm:hidden" />
+          <Brand compact className="hidden sm:inline-flex" />
+          <span className="hidden h-7 w-px bg-line sm:block" />
+          <div className="min-w-0">
+            <h1 className="font-display text-[1.7rem] font-medium leading-none tracking-[-0.02em] sm:text-3xl">
+              Reception
+            </h1>
+            <p className="mt-1 truncate text-xs text-muted">
+              {snapshot?.me.name ?? "Reception"} · {sessions.length} open {sessions.length === 1 ? "visit" : "visits"}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <ConnectionBadge status={stream} />
-          <button type="button" className={BTN} onClick={() => void signOut()}>
-            Out
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface text-muted transition hover:text-ink"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      {error ? (
-        <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </div>
-      ) : null}
-      {notice ? (
-        <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          {notice}
-        </div>
-      ) : null}
-      {snapshot?.settings.SHADOW_MODE ? (
-        <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          Pilot shadow mode — keep paper bills as the backup until the owner signs off.
-        </div>
-      ) : null}
-      {healthStatus && healthStatus !== "ok" ? (
-        <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          System health is {healthStatus}. Check Admin → Health (database, worker, disk, backup).
-        </div>
-      ) : null}
-      {escalated.length > 0 ? (
-        <div className="mt-3 animate-pulse rounded-xl border-2 border-red-500 bg-red-500/15 px-4 py-2 text-sm text-red-100">
-          <strong>Waiter not responding:</strong>{" "}
-          {escalated.map((task) => task.text).join(" · ")}
-        </div>
-      ) : null}
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-[340px_1fr]">
-        <aside className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-            Open visits
-          </h2>
+      <div className="mt-6 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="min-w-0">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-faint">Open visits</h2>
+            <span className="text-[11px] text-faint">{sessions.length}</span>
+          </div>
           {sessions.length === 0 ? (
-            <p className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400">
-              No open visits. New tables will appear here.
-            </p>
+            <div className="rounded-2xl border border-dashed border-line px-4 py-8 text-center">
+              <ReceiptText className="mx-auto h-5 w-5 text-faint" />
+              <p className="mt-2 text-sm text-muted">No open visits.</p>
+              <p className="mt-0.5 text-xs text-faint">New tables will appear here.</p>
+            </div>
           ) : (
-            sessions.map((row) => (
-              <button
-                key={row.sessionId}
-                type="button"
-                onClick={() => void selectSession(row.sessionId)}
-                className={`w-full rounded-xl border p-3 text-left ${
-                  selected === row.sessionId
-                    ? "border-emerald-500/60 bg-emerald-500/10"
-                    : row.billRequested
-                      ? "border-orange-500/50 bg-orange-500/10"
-                      : "border-slate-800 bg-slate-900/60"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-lg font-semibold">
-                      {row.tableLabel ?? "Parcel"}
-                      {row.zoneName ? (
-                        <span className="ml-2 text-[11px] font-normal text-slate-400">
-                          {row.zoneName} · {row.isAc ? "AC" : "Non-AC"}
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      {row.itemCount} items · {ist(row.openedAt)}
-                    </p>
+            <div className="space-y-2">
+              {sessions.map((row) => (
+                <button
+                  key={row.sessionId}
+                  type="button"
+                  onClick={() => void selectSession(row.sessionId)}
+                  className={`group w-full rounded-2xl border p-3.5 text-left transition ${
+                    selected === row.sessionId
+                      ? "border-accent/50 bg-accent/[0.07]"
+                      : row.billRequested
+                        ? "border-clay/40 bg-clay/[0.04] hover:border-clay/60"
+                        : "border-line bg-surface hover:border-slate-600"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-lg font-semibold leading-none">
+                        {row.tableLabel ?? "Parcel"}
+                        {row.zoneName ? (
+                          <span className="ml-2 text-[11px] font-normal text-muted">
+                            {row.zoneName} · {row.isAc ? "AC" : "Non-AC"}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="mt-1.5 text-[11px] text-faint">
+                        {row.itemCount} {row.itemCount === 1 ? "item" : "items"} · {ist(row.openedAt)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <p className="text-sm font-semibold tabular-nums">{money(row.totalPaise)}</p>
+                      <ChevronRight className="h-3.5 w-3.5 text-faint transition group-hover:translate-x-0.5" />
+                    </div>
                   </div>
-                  <p className="font-mono text-sm">{money(row.totalPaise)}</p>
-                </div>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">
-                    {row.state.replace(/_/g, " ")}
-                  </span>
-                  {row.billNumber ? (
-                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-slate-400">
-                      {row.billNumber}
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <span className="rounded-full border border-line px-2 py-0.5 text-[10px] capitalize text-muted">
+                      {row.state.replace(/_/g, " ")}
                     </span>
-                  ) : null}
-                  {row.billRequested ? (
-                    <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] text-orange-200">
-                      Bill requested
-                    </span>
-                  ) : null}
-                  {row.escalatedTasks > 0 ? (
-                    <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] text-red-200">
-                      Waiter not responding
-                    </span>
-                  ) : null}
-                </div>
-              </button>
-            ))
+                    {row.billNumber ? (
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-faint">
+                        {row.billNumber}
+                      </span>
+                    ) : null}
+                    {row.billRequested ? (
+                      <span className="rounded-full border border-clay/30 bg-clay/[0.1] px-2 py-0.5 text-[10px] font-medium text-clay">
+                        Bill requested
+                      </span>
+                    ) : null}
+                    {row.escalatedTasks > 0 ? (
+                      <span className="rounded-full border border-coral/30 bg-coral/[0.1] px-2 py-0.5 text-[10px] font-medium text-coral">
+                        Waiter not responding
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
         </aside>
 
-        {!selected || !bill ? (
-          <section className="flex min-h-[300px] items-center justify-center rounded-xl border border-slate-800 bg-slate-900/40 text-sm text-slate-500">
-            Select a table to open its bill.
-          </section>
-        ) : (
-          <section className="space-y-3">
-            <div className="no-print flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    bill.bill?.status === "PAID"
-                      ? "bg-emerald-500/15 text-emerald-300"
-                      : bill.bill?.status === "VOID"
-                        ? "bg-red-500/15 text-red-300"
-                        : "bg-slate-800 text-slate-300"
-                  }`}
-                >
-                  {bill.bill?.status ?? "DRAFT"}
-                </span>
-                <span className="text-xs text-slate-400">
-                  {bill.table ? `Table ${bill.table.label}` : "Parcel"} ·{" "}
-                  {bill.table?.zoneName ?? "Takeaway"}
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <label className="text-xs text-slate-400">
-                  Print format
+        <div className="min-w-0">
+          {error ? (
+            <div className="mb-3 flex items-start gap-2 rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+            </div>
+          ) : null}
+          {notice ? (
+            <div className="mb-3 flex items-start gap-2 rounded-2xl border border-jade/25 bg-jade/[0.07] px-4 py-3 text-sm text-jade">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> {notice}
+            </div>
+          ) : null}
+          {snapshot?.settings.SHADOW_MODE ? (
+            <div className="mb-3 rounded-2xl border border-accent/25 bg-accent/[0.06] px-4 py-3 text-xs text-accent">
+              Pilot shadow mode — keep paper bills as the backup until the owner signs off.
+            </div>
+          ) : null}
+          {healthStatus && healthStatus !== "ok" ? (
+            <div className="mb-3 rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
+              System health is {healthStatus}. Check Admin → Health (database, worker, disk, backup).
+            </div>
+          ) : null}
+          {escalated.length > 0 ? (
+            <div className="mb-3 rounded-2xl border border-coral/40 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
+              <strong>Waiter not responding:</strong> {escalated.map((task) => task.text).join(" · ")}
+            </div>
+          ) : null}
+
+          {!selected || !bill ? (
+            <section className="flex min-h-[340px] flex-col items-center justify-center rounded-3xl border border-dashed border-line px-5 text-center">
+              <ReceiptText className="h-6 w-6 text-faint" />
+              <p className="mt-2 text-sm text-muted">Select a table to open its bill.</p>
+              <p className="mt-0.5 text-xs text-faint">Extras, discounts and payment live here.</p>
+            </section>
+          ) : (
+            <section className="space-y-3">
+              <div className="no-print flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+                      bill.bill?.status === "PAID"
+                        ? "border-jade/30 bg-jade/[0.1] text-jade"
+                        : bill.bill?.status === "VOID"
+                          ? "border-coral/30 bg-coral/[0.1] text-coral"
+                          : "border-line bg-surface text-muted"
+                    }`}
+                  >
+                    {bill.bill?.status ?? "DRAFT"}
+                  </span>
+                  <span className="truncate text-xs text-muted">
+                    {bill.table ? `Table ${bill.table.label}` : "Parcel"} · {bill.table?.zoneName ?? "Takeaway"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
                   <select
+                    aria-label="Print format"
                     value={printFormat}
                     onChange={(event) => setPrintFormat(event.target.value as "80mm" | "a4")}
-                    className="ml-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs text-slate-200"
+                    className="rounded-xl border border-line bg-surface px-2.5 py-2 text-xs text-muted outline-none"
                   >
                     <option value="80mm">80 mm thermal</option>
                     <option value="a4">A4</option>
                   </select>
-                </label>
-                <button type="button" className={BTN} onClick={() => window.print()}>
-                  Print
-                </button>
+                  <button type="button" className={BTN} onClick={() => window.print()}>
+                    <Printer className="h-3.5 w-3.5" /> Print
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="bill-print" data-format={printFormat}>
+<div className="bill-print" data-format={printFormat}>
               <div style={{ textAlign: "center" }}>
                 <p style={{ fontSize: "1.2em", fontWeight: 700 }}>{bill.restaurant.name}</p>
                 {bill.restaurant.address ? <p>{bill.restaurant.address}</p> : null}
@@ -424,7 +452,10 @@ export default function ReceptionPage() {
                 <span>
                   {bill.table ? `Table ${bill.table.label} · ${bill.table.zoneName}` : "Parcel"}
                 </span>
-                <span>{bill.items.reduce((sum, item) => sum + item.qty, 0)} items</span>
+                <span>
+                  {bill.items.reduce((sum, item) => sum + item.qty, 0)}{" "}
+                  {bill.items.reduce((sum, item) => sum + item.qty, 0) === 1 ? "item" : "items"}
+                </span>
               </div>
               <hr />
               <table>
@@ -547,7 +578,7 @@ export default function ReceptionPage() {
             </div>
 
             {voiding ? (
-              <div className="no-print rounded-xl border border-red-500/40 bg-red-500/10 p-3">
+              <div className="no-print rounded-2xl border border-coral/30 bg-coral/[0.06] p-4">
                 <p className="text-sm text-red-200">Void {voiding.name}</p>
                 <div className="mt-2 flex gap-2">
                   <input
@@ -555,7 +586,7 @@ export default function ReceptionPage() {
                     value={voiding.reason}
                     onChange={(event) => setVoiding({ ...voiding, reason: event.target.value })}
                     placeholder="Reason (required)"
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                    className="flex-1 rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-accent/50"
                   />
                   <button type="button" className={BTN} disabled={busy || !voiding.reason.trim()} onClick={() => void cancelItem()}>
                     Confirm void
@@ -569,8 +600,8 @@ export default function ReceptionPage() {
 
             {bill.bill?.status === "OPEN" ? (
               <div className="no-print grid gap-3 xl:grid-cols-2">
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                <section className="rounded-2xl border border-line bg-surface p-4">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Items · void before payment
                   </h2>
                   <ul className="mt-2 space-y-1 text-sm">
@@ -583,7 +614,7 @@ export default function ReceptionPage() {
                           </span>
                           <button
                             type="button"
-                            className="text-xs text-red-300"
+                            className="text-[11px] font-medium text-coral"
                             disabled={busy}
                             onClick={() => setVoiding({ itemId: item.id, name: item.name, reason: "" })}
                           >
@@ -592,13 +623,13 @@ export default function ReceptionPage() {
                         </li>
                       ))}
                     {bill.items.every((item) => !["PLACED", "PREPARING", "READY"].includes(item.orderStatus)) ? (
-                      <li className="text-slate-500">No voidable items.</li>
+                      <li className="text-faint">No voidable items.</li>
                     ) : null}
                   </ul>
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                <section className="rounded-2xl border border-line bg-surface p-4">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Extras
                   </h2>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -627,14 +658,14 @@ export default function ReceptionPage() {
                       value={extraLabel}
                       onChange={(event) => setExtraLabel(event.target.value)}
                       placeholder="Custom extra"
-                      className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs"
+                      className="min-w-0 flex-1 rounded-xl border border-line bg-canvas px-2.5 py-2 text-xs text-ink outline-none placeholder:text-faint focus:border-accent/50"
                     />
                     <input
                       value={extraRupees}
                       onChange={(event) => setExtraRupees(event.target.value)}
                       inputMode="decimal"
                       placeholder="₹"
-                      className="w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs"
+                      className="w-20 rounded-xl border border-line bg-canvas px-2.5 py-2 text-xs text-ink outline-none placeholder:text-faint focus:border-accent/50"
                     />
                     <button
                       type="button"
@@ -660,7 +691,7 @@ export default function ReceptionPage() {
                     </button>
                   </div>
 
-                  <h2 className="mt-4 text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  <h2 className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Discount
                   </h2>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -669,7 +700,7 @@ export default function ReceptionPage() {
                       onChange={(event) => setDiscountPercent(event.target.value)}
                       inputMode="numeric"
                       placeholder="%"
-                      className="w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs"
+                      className="w-20 rounded-xl border border-line bg-canvas px-2.5 py-2 text-xs text-ink outline-none placeholder:text-faint focus:border-accent/50"
                     />
                     <button
                       type="button"
@@ -693,7 +724,7 @@ export default function ReceptionPage() {
                       onChange={(event) => setDiscountRupees(event.target.value)}
                       inputMode="decimal"
                       placeholder="₹ discount"
-                      className="w-28 rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs"
+                      className="w-28 rounded-xl border border-line bg-canvas px-2.5 py-2 text-xs text-ink outline-none placeholder:text-faint focus:border-accent/50"
                     />
                     <button
                       type="button"
@@ -726,7 +757,7 @@ export default function ReceptionPage() {
                           </span>
                           <button
                             type="button"
-                            className="text-red-300"
+                            className="text-coral"
                             disabled={busy}
                             onClick={() =>
                               void act(() =>
@@ -749,11 +780,11 @@ export default function ReceptionPage() {
                   ) : null}
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 xl:col-span-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                <section className="rounded-2xl border border-line bg-surface p-4 xl:col-span-2">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Payment
                   </h2>
-                  <p className="mt-1 text-sm text-slate-300">
+                  <p className="mt-1 text-sm text-muted">
                     Total <span className="font-semibold">{money(totalPaise)}</span> · entered{" "}
                     {money(enteredPaise)}
                     {changePaise > 0 ? ` · change ${money(changePaise)}` : ""}
@@ -764,13 +795,13 @@ export default function ReceptionPage() {
                       { label: "UPI", value: upi, set: setUpi },
                       { label: "Card", value: card, set: setCard },
                     ].map((field) => (
-                      <label key={field.label} className="text-xs text-slate-400">
+                      <label key={field.label} className="text-[11px] text-faint">
                         {field.label} ₹
                         <input
                           value={field.value}
                           onChange={(event) => field.set(event.target.value)}
                           inputMode="decimal"
-                          className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                          className="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-accent/50"
                         />
                       </label>
                     ))}
@@ -789,7 +820,7 @@ export default function ReceptionPage() {
                     <button
                       type="button"
                       className={`${BTN_PRIMARY} flex-1`}
-                      disabled={busy || enteredPaise < totalPaise || (totalPaise > 0 && enteredPaise === 0)}
+                      disabled={busy || totalPaise === 0 || enteredPaise < totalPaise}
                       onClick={() => void pay()}
                     >
                       {busy ? "Working…" : "Take payment & close"}
@@ -797,8 +828,8 @@ export default function ReceptionPage() {
                   </div>
                 </section>
 
-                <section className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 xl:col-span-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-red-300">
+                <section className="rounded-2xl border border-coral/25 bg-coral/[0.04] p-4 xl:col-span-2">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-coral">
                     Void bill
                   </h2>
                   <div className="mt-2 flex gap-2">
@@ -806,7 +837,7 @@ export default function ReceptionPage() {
                       value={voidReason}
                       onChange={(event) => setVoidReason(event.target.value)}
                       placeholder="Reason (required, audited)"
-                      className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                      className="min-w-0 flex-1 rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-accent/50"
                     />
                     <button
                       type="button"
@@ -821,13 +852,13 @@ export default function ReceptionPage() {
               </div>
             ) : bill.bill?.status === "PAID" ? (
               <div className="no-print space-y-3">
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-emerald-200">
+                <div className="rounded-2xl border border-jade/25 bg-jade/[0.05] p-4 text-sm text-jade">
                   Paid {bill.bill.paidAt ? ist(bill.bill.paidAt) : ""}. The table is waiting to be
                   cleaned.
                 </div>
                 {isAdmin ? (
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  <div className="rounded-2xl border border-line bg-surface p-4">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                       Reopen (admin, audited)
                     </h2>
                     <div className="mt-2 flex gap-2">
@@ -835,7 +866,7 @@ export default function ReceptionPage() {
                         value={reopenReason}
                         onChange={(event) => setReopenReason(event.target.value)}
                         placeholder="Reason (required)"
-                        className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                        className="min-w-0 flex-1 rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-accent/50"
                       />
                       <button
                         type="button"
@@ -846,19 +877,20 @@ export default function ReceptionPage() {
                         Reopen bill
                       </button>
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-1 text-[11px] text-faint">
                       Reopening removes the recorded payments (kept in the audit log).
                     </p>
                   </div>
                 ) : null}
               </div>
             ) : bill.bill?.status === "VOID" ? (
-              <div className="no-print rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-200">
+              <div className="no-print rounded-2xl border border-coral/25 bg-coral/[0.04] p-4 text-sm text-coral">
                 This bill was voided. The table is free.
               </div>
             ) : null}
           </section>
         )}
+        </div>
       </div>
     </main>
   );

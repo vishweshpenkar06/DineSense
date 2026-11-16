@@ -1,5 +1,7 @@
 "use client";
 
+import { Check, Volume2 } from "lucide-react";
+
 export function ShiftBar({
   unlocked,
   screenAwake,
@@ -11,8 +13,8 @@ export function ShiftBar({
 }) {
   if (unlocked && screenAwake) {
     return (
-      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200">
-        Sound on · screen stays awake
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-jade/20 bg-jade/[0.07] px-2.5 py-1 text-[11px] font-medium text-jade">
+        <Check className="h-3 w-3" /> Sound on · awake
       </div>
     );
   }
@@ -21,9 +23,9 @@ export function ShiftBar({
       <button
         type="button"
         onClick={onStart}
-        className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-200"
+        className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/[0.08] px-2.5 py-1 text-[11px] font-medium text-accent"
       >
-        Sound on · tap to keep the screen awake
+        <Volume2 className="h-3 w-3" /> Keep screen awake
       </button>
     );
   }
@@ -31,12 +33,16 @@ export function ShiftBar({
     <button
       type="button"
       onClick={onStart}
-      className="w-full rounded-lg bg-red-500 px-4 py-2.5 text-left text-sm font-semibold text-white shadow-lg shadow-red-900/30"
+      className="flex w-full items-center gap-3 rounded-2xl border border-accent/35 bg-accent/[0.08] px-4 py-3 text-left transition hover:bg-accent/[0.12]"
     >
-      Sound is off — tap to start your shift
-      <span className="ml-2 text-xs font-normal text-red-100">
-        enables alerts, vibration and wake lock
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-canvas">
+        <Volume2 className="h-4 w-4" />
       </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-ink">Start your shift</span>
+        <span className="block text-xs text-muted">Turn on alerts, vibration and keep this screen awake.</span>
+      </span>
+      <span className="text-xs font-semibold uppercase tracking-wider text-accent">Enable</span>
     </button>
   );
 }

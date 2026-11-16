@@ -1,6 +1,19 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "./pwa-register";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "DineSense",
@@ -23,7 +36,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  themeColor: "#0B0A08",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -31,8 +44,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <html lang="en" className={`${manrope.variable} ${fraunces.variable}`}>
+      <body className="min-h-screen bg-canvas font-sans text-ink antialiased">
         <PwaRegister />
         {children}
       </body>

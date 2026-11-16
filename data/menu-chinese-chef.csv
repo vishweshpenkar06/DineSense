@@ -1,0 +1,236 @@
+category,item,local_name,variant,price_ground,price_first,veg,needs_kitchen
+Veg Soups,Veg Thai Green Soup,,Half,90,105,Y,Y
+Veg Soups,Veg Thai Green Soup,,Full,180,195,Y,Y
+Veg Soups,Veg Thai Red Soup,,Half,90,105,Y,Y
+Veg Soups,Veg Thai Red Soup,,Full,180,195,Y,Y
+Veg Soups,Veg Manchow Soup,,Half,75,90,Y,Y
+Veg Soups,Veg Manchow Soup,,Full,150,165,Y,Y
+Veg Soups,Veg Hot & Sour Soup,,Half,90,105,Y,Y
+Veg Soups,Veg Hot & Sour Soup,,Full,180,195,Y,Y
+Veg Soups,Veg Special Soup,,Half,130,145,Y,Y
+Veg Soups,Veg Special Soup,,Full,260,275,Y,Y
+Veg Soups,Veg Tomato Soup,,Half,90,105,Y,Y
+Veg Soups,Veg Tomato Soup,,Full,180,195,Y,Y
+Veg Soups,Veg Clear Soup,,Half,90,105,Y,Y
+Veg Soups,Veg Clear Soup,,Full,180,195,Y,Y
+Veg Soups,Veg Noodle Soup,,Half,90,105,Y,Y
+Veg Soups,Veg Noodle Soup,,Full,180,195,Y,Y
+Veg Soups,Lemon Coriander Soup,,Half,90,105,Y,Y
+Veg Soups,Lemon Coriander Soup,,Full,180,195,Y,Y
+Veg Soups,Onion Soup,,Half,90,105,Y,Y
+Veg Soups,Onion Soup,,Full,180,195,Y,Y
+Veg Soups,Veg Mushroom Soup,,Half,90,105,Y,Y
+Veg Soups,Veg Mushroom Soup,,Full,180,195,Y,Y
+Non Veg Soups,Chicken Thai Green Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Thai Green Soup,,Full,180,195,N,Y
+Non Veg Soups,Chicken Thai Red Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Thai Red Soup,,Full,180,195,N,Y
+Non Veg Soups,Chicken Manchow Soup,,Half,75,90,N,Y
+Non Veg Soups,Chicken Manchow Soup,,Full,150,165,N,Y
+Non Veg Soups,Chicken Special Soup,,Half,130,145,N,Y
+Non Veg Soups,Chicken Special Soup,,Full,260,275,N,Y
+Non Veg Soups,Chicken Hot & Sour Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Hot & Sour Soup,,Full,180,195,N,Y
+Non Veg Soups,Chicken Lung Fung Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Lung Fung Soup,,Full,180,195,N,Y
+Non Veg Soups,Chicken Mushroom Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Mushroom Soup,,Full,180,195,N,Y
+Non Veg Soups,Chicken Clear Soup,,Half,80,95,N,Y
+Non Veg Soups,Chicken Clear Soup,,Full,160,175,N,Y
+Non Veg Soups,Chicken Noodle Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Noodle Soup,,Full,180,195,N,Y
+Non Veg Soups,Chicken Coriander Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Coriander Soup,,Full,180,195,N,Y
+Non Veg Soups,Chicken Onion Soup,,Half,90,105,N,Y
+Non Veg Soups,Chicken Onion Soup,,Full,180,195,N,Y
+Veg Starters,Veg Chilly,,Half,140,155,Y,Y
+Veg Starters,Veg Chilly,,Full,280,295,Y,Y
+Veg Starters,Veg Manchurian,,Half (Dry),140,155,Y,Y
+Veg Starters,Veg Manchurian,,Half (Gravy),150,165,Y,Y
+Veg Starters,Veg Manchurian,,Full (Dry),280,295,Y,Y
+Veg Starters,Veg Manchurian,,Full (Gravy),300,315,Y,Y
+Veg Starters,Veg Singapore,,Half,140,155,Y,Y
+Veg Starters,Veg Singapore,,Full,280,295,Y,Y
+Veg Starters,Veg Hong Kong,,Half,140,155,Y,Y
+Veg Starters,Veg Hong Kong,,Full,280,295,Y,Y
+Veg Starters,Veg Schezwan Garlic,,Half,140,155,Y,Y
+Veg Starters,Veg Schezwan Garlic,,Full,280,295,Y,Y
+Veg Starters,Potato Chilly,,Half,150,165,Y,Y
+Veg Starters,Potato Chilly,,Full,300,315,Y,Y
+Veg Starters,Mushroom Chilly,,Half,150,165,Y,Y
+Veg Starters,Mushroom Chilly,,Full,300,315,Y,Y
+Veg Starters,Mushroom 65,,Half,150,165,Y,Y
+Veg Starters,Mushroom 65,,Full,300,315,Y,Y
+Veg Starters,Paneer 65,,Half,150,165,Y,Y
+Veg Starters,Paneer 65,,Full,300,315,Y,Y
+Veg Starters,Paneer Satay,,Full,270,285,Y,Y
+Veg Starters,Paneer Garlic,,Half,150,165,Y,Y
+Veg Starters,Paneer Garlic,,Full,300,315,Y,Y
+Veg Starters,Paneer Schezwan Oil Fry,,Half,130,145,Y,Y
+Veg Starters,Paneer Schezwan Oil Fry,,Full,260,275,Y,Y
+Veg Starters,Paneer Hong Kong,,Half,150,165,Y,Y
+Veg Starters,Paneer Hong Kong,,Full,300,315,Y,Y
+Veg Starters,Paneer Chilly,,Full,270,285,Y,Y
+Veg Starters,Paneer Crispy,,Full,270,285,Y,Y
+Veg Starters,Veg Lollipop,,Half,140,155,Y,Y
+Veg Starters,Veg Lollipop,,Full,280,295,Y,Y
+Veg Starters,Veg Bhel,,Full,160,175,Y,Y
+Veg Starters,Veg Crispy,,Full,270,285,Y,Y
+Non Veg Starters,Chicken Chilly,,Half (Dry),140,155,N,Y
+Non Veg Starters,Chicken Chilly,,Half (Gravy),150,165,N,Y
+Non Veg Starters,Chicken Chilly,,Full (Dry),280,295,N,Y
+Non Veg Starters,Chicken Chilly,,Full (Gravy),300,315,N,Y
+Non Veg Starters,Chicken Manchurian,,Half (Dry),150,165,N,Y
+Non Veg Starters,Chicken Manchurian,,Half (Gravy),160,175,N,Y
+Non Veg Starters,Chicken Manchurian,,Full (Dry),300,315,N,Y
+Non Veg Starters,Chicken Manchurian,,Full (Gravy),320,335,N,Y
+Non Veg Starters,Chicken Singapore,,Half,150,165,N,Y
+Non Veg Starters,Chicken Singapore,,Full,300,315,N,Y
+Non Veg Starters,Chicken Hong Kong,,Half,150,165,N,Y
+Non Veg Starters,Chicken Hong Kong,,Full,300,315,N,Y
+Non Veg Starters,Chicken Shanghai,,Half,150,165,N,Y
+Non Veg Starters,Chicken Shanghai,,Full,300,315,N,Y
+Non Veg Starters,Chicken Schezwan Garlic,,Half,150,165,N,Y
+Non Veg Starters,Chicken Schezwan Garlic,,Full,300,315,N,Y
+Non Veg Starters,Lemon Chicken,,Half,150,165,N,Y
+Non Veg Starters,Lemon Chicken,,Full,300,315,N,Y
+Non Veg Starters,Chicken 65,,Half,150,165,N,Y
+Non Veg Starters,Chicken 65,,Full,300,315,N,Y
+Non Veg Starters,Chicken Schezwan Oil Fry 8pcs,,Half,130,145,N,Y
+Non Veg Starters,Chicken Schezwan Oil Fry 8pcs,,Full,260,275,N,Y
+Non Veg Starters,Chicken Lollipop (Oil Fry),,Half,150,165,N,Y
+Non Veg Starters,Chicken Lollipop (Oil Fry),,Full,300,315,N,Y
+Non Veg Starters,Chicken Lollipop Masala,,Half,180,195,N,Y
+Non Veg Starters,Chicken Lollipop Masala,,Full,360,375,N,Y
+Non Veg Starters,Chicken Satay,,Full,270,285,N,Y
+Non Veg Starters,Chicken Crispy,,Full,270,285,N,Y
+Non Veg Starters,Chicken Bhel,,Full,170,185,N,Y
+Non Veg Starters,Egg Chilly,,Half,160,175,N,Y
+Non Veg Starters,Egg Chilly,,Full,320,335,N,Y
+Non Veg Starters,Prawns Chilly,,Half,210,225,N,Y
+Non Veg Starters,Prawns Chilly,,Full,240,255,N,Y
+Non Veg Starters,Prawns 65,,Half,210,225,N,Y
+Non Veg Starters,Prawns 65,,Full,240,255,N,Y
+Veg Rice,Veg Fried Rice,,Half,90,105,Y,Y
+Veg Rice,Veg Fried Rice,,Full,180,195,Y,Y
+Veg Rice,Veg Schezwan Rice,,Half,100,115,Y,Y
+Veg Rice,Veg Schezwan Rice,,Full,200,215,Y,Y
+Veg Rice,Veg Singapore Rice,,Half,130,145,Y,Y
+Veg Rice,Veg Singapore Rice,,Full,260,275,Y,Y
+Veg Rice,Veg Hong Kong Fried Rice,,Half,120,135,Y,Y
+Veg Rice,Veg Hong Kong Fried Rice,,Full,240,255,Y,Y
+Veg Rice,Veg Triple Schezwan Rice,,Half,140,155,Y,Y
+Veg Rice,Veg Triple Schezwan Rice,,Full,280,295,Y,Y
+Veg Rice,Veg Mushroom Rice,,Half,120,135,Y,Y
+Veg Rice,Veg Mushroom Rice,,Full,240,255,Y,Y
+Veg Rice,Veg Manchurian Rice,,Half,140,155,Y,Y
+Veg Rice,Veg Manchurian Rice,,Full,280,295,Y,Y
+Veg Rice,Veg Paneer Fried Rice,,Half,120,135,Y,Y
+Veg Rice,Veg Paneer Fried Rice,,Full,240,255,Y,Y
+Veg Rice,Veg Paneer Schezwan Fried Rice,,Half,130,145,Y,Y
+Veg Rice,Veg Paneer Schezwan Fried Rice,,Full,260,275,Y,Y
+Veg Rice,Veg Combination Rice,,Half,110,125,Y,Y
+Veg Rice,Veg Combination Rice,,Full,220,235,Y,Y
+Veg Rice,Veg Schezwan Combination Rice,,Half,120,135,Y,Y
+Veg Rice,Veg Schezwan Combination Rice,,Full,240,255,Y,Y
+Veg Rice,Veg Malaysian Rice,,Half,140,155,Y,Y
+Veg Rice,Veg Malaysian Rice,,Full,280,295,Y,Y
+Non Veg Rice,Chicken Fried Rice,,Half,90,105,N,Y
+Non Veg Rice,Chicken Fried Rice,,Full,180,195,N,Y
+Non Veg Rice,Chicken Schezwan Rice,,Half,100,115,N,Y
+Non Veg Rice,Chicken Schezwan Rice,,Full,200,215,N,Y
+Non Veg Rice,Chicken Singapore Rice,,Half,120,135,N,Y
+Non Veg Rice,Chicken Singapore Rice,,Full,240,255,N,Y
+Non Veg Rice,Chicken Hong Kong Fried Rice,,Half,120,135,N,Y
+Non Veg Rice,Chicken Hong Kong Fried Rice,,Full,240,255,N,Y
+Non Veg Rice,Chicken Triple Schezwan Rice,,Half,140,155,N,Y
+Non Veg Rice,Chicken Triple Schezwan Rice,,Full,280,295,N,Y
+Non Veg Rice,Chicken Manchurian Rice,,Half,140,155,N,Y
+Non Veg Rice,Chicken Manchurian Rice,,Full,280,295,N,Y
+Non Veg Rice,Chicken Combination Rice,,Half,110,125,N,Y
+Non Veg Rice,Chicken Combination Rice,,Full,220,235,N,Y
+Non Veg Rice,Chicken Schezwan Combination Rice,,Half,120,135,N,Y
+Non Veg Rice,Chicken Schezwan Combination Rice,,Full,240,255,N,Y
+Non Veg Rice,Chicken Lemon Rice,,Half,130,145,N,Y
+Non Veg Rice,Chicken Lemon Rice,,Full,260,275,N,Y
+Non Veg Rice,Chicken Mix Rice,,Half,130,145,N,Y
+Non Veg Rice,Chicken Mix Rice,,Full,260,275,N,Y
+Non Veg Rice,Chicken Malaysian Rice,,Half,150,165,N,Y
+Non Veg Rice,Chicken Malaysian Rice,,Half (Gravy),160,175,N,Y
+Non Veg Rice,Chicken Malaysian Rice,,Full,300,315,N,Y
+Non Veg Rice,Chicken Malaysian Rice,,Full (Gravy),320,335,N,Y
+Non Veg Rice,Chicken Chopper Rice,,Half,150,165,N,Y
+Non Veg Rice,Chicken Chopper Rice,,Full,300,315,N,Y
+Non Veg Rice,Chicken Sherpa Rice,,Half,150,165,N,Y
+Non Veg Rice,Chicken Sherpa Rice,,Full,300,315,N,Y
+Non Veg Rice,Chicken Pot Rice,,Half,150,165,N,Y
+Non Veg Rice,Chicken Pot Rice,,Full,300,315,N,Y
+Non Veg Rice,Chicken Packing Rice,,Full,310,325,N,Y
+Non Veg Rice,Egg Fried Rice,,Half,90,105,N,Y
+Non Veg Rice,Egg Fried Rice,,Full,180,195,N,Y
+Non Veg Rice,Egg Schezwan Rice,,Half,100,115,N,Y
+Non Veg Rice,Egg Schezwan Rice,,Full,200,215,N,Y
+Non Veg Rice,Egg Triple Rice,,Half,140,155,N,Y
+Non Veg Rice,Egg Triple Rice,,Full,280,295,N,Y
+Non Veg Rice,Prawns Fried Rice,,Half,160,175,N,Y
+Non Veg Rice,Prawns Fried Rice,,Full,320,335,N,Y
+Non Veg Rice,Prawns Schezwan Rice,,Half,170,185,N,Y
+Non Veg Rice,Prawns Schezwan Rice,,Full,340,355,N,Y
+Non Veg Rice,Prawns Combination Rice,,Half,170,185,N,Y
+Non Veg Rice,Prawns Combination Rice,,Full,340,355,N,Y
+Non Veg Rice,Prawns Triple Rice,,Half,200,215,N,Y
+Non Veg Rice,Prawns Triple Rice,,Full,400,415,N,Y
+Veg Noodles,Veg Hakka Noodles,,Half,90,105,Y,Y
+Veg Noodles,Veg Hakka Noodles,,Full,180,195,Y,Y
+Veg Noodles,Veg Schezwan Noodles,,Half,100,115,Y,Y
+Veg Noodles,Veg Schezwan Noodles,,Full,200,215,Y,Y
+Veg Noodles,Veg Singapore Noodles,,Half,130,145,Y,Y
+Veg Noodles,Veg Singapore Noodles,,Full,260,275,Y,Y
+Veg Noodles,Veg Hong Kong Noodles,,Half,120,135,Y,Y
+Veg Noodles,Veg Hong Kong Noodles,,Full,240,255,Y,Y
+Veg Noodles,Veg Triple Noodles,,Half,140,155,Y,Y
+Veg Noodles,Veg Triple Noodles,,Full,280,295,Y,Y
+Veg Noodles,Veg Malaysian Noodles,,Half,140,155,Y,Y
+Veg Noodles,Veg Malaysian Noodles,,Full,280,295,Y,Y
+Veg Noodles,Veg Mushroom Noodles,,Half,130,145,Y,Y
+Veg Noodles,Veg Mushroom Noodles,,Full,260,275,Y,Y
+Veg Noodles,Veg Manchurian Noodles,,Half,140,155,Y,Y
+Veg Noodles,Veg Manchurian Noodles,,Full,280,295,Y,Y
+Non Veg Noodles,Chicken Hakka Noodles,,Half,90,105,N,Y
+Non Veg Noodles,Chicken Hakka Noodles,,Full,180,195,N,Y
+Non Veg Noodles,Chicken Schezwan Noodles,,Half,100,115,N,Y
+Non Veg Noodles,Chicken Schezwan Noodles,,Full,200,215,N,Y
+Non Veg Noodles,Chicken Singapore Noodles,,Half,120,135,N,Y
+Non Veg Noodles,Chicken Singapore Noodles,,Full,240,255,N,Y
+Non Veg Noodles,Chicken Mix Noodles,,Half,120,135,N,Y
+Non Veg Noodles,Chicken Mix Noodles,,Full,240,255,N,Y
+Non Veg Noodles,Chicken Hong Kong Noodles,,Half,120,135,N,Y
+Non Veg Noodles,Chicken Hong Kong Noodles,,Full,240,255,N,Y
+Non Veg Noodles,Chicken Triple Noodles,,Half,150,165,N,Y
+Non Veg Noodles,Chicken Triple Noodles,,Full,300,315,N,Y
+Non Veg Noodles,Chicken Malaysian Noodles,,Half,150,165,N,Y
+Non Veg Noodles,Chicken Malaysian Noodles,,Half (Gravy),160,175,N,Y
+Non Veg Noodles,Chicken Malaysian Noodles,,Full,300,315,N,Y
+Non Veg Noodles,Chicken Malaysian Noodles,,Full (Gravy),320,335,N,Y
+Non Veg Noodles,Chicken Chopper Noodles,,Half,150,165,N,Y
+Non Veg Noodles,Chicken Chopper Noodles,,Full,300,315,N,Y
+Non Veg Noodles,Chicken Sherpa Noodles,,Half,150,165,N,Y
+Non Veg Noodles,Chicken Sherpa Noodles,,Full,300,315,N,Y
+Non Veg Noodles,Chicken Packing Noodles,,Full,310,325,N,Y
+Non Veg Noodles,Egg Noodles,,Half,90,105,N,Y
+Non Veg Noodles,Egg Noodles,,Full,180,195,N,Y
+Non Veg Noodles,Egg Schezwan Noodles,,Half,100,115,N,Y
+Non Veg Noodles,Egg Schezwan Noodles,,Full,200,215,N,Y
+Non Veg Noodles,Egg Triple Noodles,,Half,150,165,N,Y
+Non Veg Noodles,Egg Triple Noodles,,Full,300,315,N,Y
+Non Veg Noodles,Prawns Hakka Noodles,,Half,160,175,N,Y
+Non Veg Noodles,Prawns Hakka Noodles,,Full,320,335,N,Y
+Non Veg Noodles,Prawns Schezwan Noodles,,Half,170,185,N,Y
+Non Veg Noodles,Prawns Schezwan Noodles,,Full,340,355,N,Y
+Non Veg Noodles,Prawns Schezwan Triple Noodles,,Half,200,215,N,Y
+Non Veg Noodles,Prawns Schezwan Triple Noodles,,Full,400,415,N,Y
+Choupsey,Veg American Choupsey,,Regular,160,175,Y,Y
+Choupsey,Veg Schezwan Choupsey,,Regular,160,175,Y,Y
+Choupsey,Chicken American Choupsey,,Regular,170,185,N,Y
+Choupsey,Chicken Schezwan Choupsey,,Regular,170,185,N,Y
+Choupsey,Dry Noodles & Schezwan Chutney (Time Pass),,Regular,20,35,Y,N

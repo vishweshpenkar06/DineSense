@@ -1,20 +1,36 @@
 "use client";
 
-import type { KitchenTicketDto, StockVariantDto } from "@dinesense/core";
+import { Brand, BrandMark } from "@/components/brand";
 import { ConnectionBadge } from "@/components/connection-badge";
 import { ShiftBar } from "@/components/shift-bar";
+import type { KitchenTicketDto, StockVariantDto } from "@dinesense/core";
 import { errorMessage, getJson, postJson } from "@/lib/client";
 import { useSnapshotLive } from "@/lib/live";
 import { useShift } from "@/lib/shift";
 import { elapsedLabel } from "@/lib/ui";
+import {
+  CheckCircle2,
+  ChefHat,
+  Flame,
+  Layers,
+  LogOut,
+  Package,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const BTN =
-  "rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-200 disabled:opacity-40";
+  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium text-ink transition hover:border-slate-600 hover:bg-raised disabled:opacity-40";
 const BTN_PRIMARY =
-  "rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40";
+  "inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-[#efc05e] disabled:bg-raised disabled:text-faint disabled:hover:bg-raised";
+
+const COLUMN_META = {
+  PLACED: { dot: "bg-accent", empty: "No new tickets" },
+  PREPARING: { dot: "bg-sky-400", empty: "Nothing cooking" },
+  READY: { dot: "bg-iris", empty: "Nothing waiting" },
+} as const;
 
 export default function ChefPage() {
   const router = useRouter();
@@ -146,18 +162,16 @@ export default function ChefPage() {
       list.push(variant);
       map.set(variant.itemName, list);
     }
-    return [...map.entries()];
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [stock]);
 
   if (unauthorized) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md items-center justify-center px-5">
-        <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-center">
-          <h1 className="text-xl font-semibold">Chef sign in</h1>
-          <Link
-            href="/login"
-            className="mt-4 inline-block rounded-lg bg-emerald-500 px-5 py-2.5 font-semibold text-slate-950"
-          >
+      <main className="mx-auto flex min-h-[100dvh] max-w-md items-center justify-center px-5">
+        <div className="w-full rounded-3xl border border-line bg-surface p-8 text-center">
+          <BrandMark className="mx-auto h-10 w-10 text-accent" />
+          <h1 className="mt-5 font-display text-2xl">Chef sign in</h1>
+          <Link href="/login" className={`${BTN_PRIMARY} mt-5 w-full py-3`}>
             Go to sign in
           </Link>
         </div>
@@ -165,70 +179,94 @@ export default function ChefPage() {
     );
   }
 
+  const openTickets = tickets.filter((ticket) => ticket.status !== "CANCELLED").length;
+  const openItems = dishes.reduce((sum, dish) => sum + dish.qty, 0);
+  const boardEmpty = openTickets === 0;
+
   return (
-    <main className="min-h-screen px-3 py-3">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Kitchen</h1>
-          <p className="text-xs text-slate-400">
-            {snapshot?.me.name ?? "Chef"} · {tickets.filter((ticket) => ticket.status !== "CANCELLED").length} open
-            tickets · {dishes.reduce((sum, dish) => sum + dish.qty, 0)} items
-          </p>
+    <main className="mx-auto min-h-[100dvh] max-w-7xl px-4 pb-10 pt-5 sm:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <BrandMark className="h-8 w-8 shrink-0 text-accent sm:hidden" />
+          <Brand compact className="hidden sm:inline-flex" />
+          <span className="hidden h-7 w-px bg-line sm:block" />
+          <div className="min-w-0">
+            <h1 className="font-display text-[1.7rem] font-medium leading-none tracking-[-0.02em] sm:text-3xl">
+              Kitchen
+            </h1>
+            <p className="mt-1 truncate text-xs text-muted">
+              {snapshot?.me.name ?? "Chef"} · {openTickets} open {openTickets === 1 ? "ticket" : "tickets"} · {openItems} {openItems === 1 ? "item" : "items"}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <ConnectionBadge status={stream} />
           <button
             type="button"
-            className={byDish ? BTN_PRIMARY : BTN}
+            className={byDish ? `${BTN_PRIMARY} px-3` : `${BTN} px-3`}
+            aria-pressed={byDish}
             onClick={() => setByDish((value) => !value)}
           >
-            By dish
+            <Layers className="h-4 w-4" /> <span className="hidden sm:inline">By dish</span>
           </button>
           <button
             type="button"
-            className={showStock ? BTN_PRIMARY : BTN}
+            className={showStock ? `${BTN_PRIMARY} px-3` : `${BTN} px-3`}
+            aria-pressed={showStock}
             onClick={() => {
               setShowStock((value) => !value);
               if (!showStock) void loadStock();
             }}
           >
-            Stock
+            <Package className="h-4 w-4" /> <span className="hidden sm:inline">Stock</span>
           </button>
-          <button type="button" className={BTN} onClick={() => void signOut()}>
-            Out
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface text-muted transition hover:text-ink"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      {snapshot?.settings.SHADOW_MODE ? (
-        <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          Pilot shadow mode — keep the paper chits as a backup while you compare the board.
-        </div>
-      ) : null}
-      <div className="mt-3">
-        <ShiftBar
-          unlocked={shift.unlocked}
-          screenAwake={shift.screenAwake}
-          onStart={() => void shift.start()}
-        />
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <ShiftBar unlocked={shift.unlocked} screenAwake={shift.screenAwake} onStart={() => void shift.start()} />
+        {snapshot?.settings.SHADOW_MODE ? (
+          <span className="rounded-full border border-accent/25 bg-accent/[0.06] px-2.5 py-1 text-[11px] text-accent">
+            Shadow mode · paper chits are the backup
+          </span>
+        ) : null}
       </div>
 
       {error ? (
-        <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <div className="mt-3 rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
           {error}
         </div>
       ) : null}
 
       {showStock ? (
-        <section className="mt-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Out of stock
-          </h2>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mt-4 rounded-2xl border border-line bg-surface">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold">Stock</h2>
+              <p className="text-[11px] text-muted">Tap a variant to mark it sold out or available.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowStock(false)}
+              aria-label="Close stock"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-raised hover:text-ink"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
             {stockGroups.map(([itemName, variants]) => (
-              <div key={itemName} className="rounded-lg border border-slate-800 p-2">
+              <div key={itemName} className="rounded-xl border border-line bg-canvas/40 p-3">
                 <p className="text-sm font-medium">{itemName}</p>
-                <div className="mt-1 flex flex-wrap gap-1.5">
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   {variants.map((variant) => (
                     <button
                       key={variant.id}
@@ -242,10 +280,10 @@ export default function ChefPage() {
                           await loadStock();
                         })
                       }
-                      className={`rounded-full px-2.5 py-1 text-xs ${
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
                         variant.available
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : "bg-red-500/20 text-red-300 line-through"
+                          ? "border-jade/25 bg-jade/[0.08] text-jade"
+                          : "border-coral/30 bg-coral/[0.08] text-coral line-through"
                       }`}
                     >
                       {variant.label}
@@ -259,11 +297,9 @@ export default function ChefPage() {
       ) : null}
 
       {cancelled.length > 0 ? (
-        <section className="mt-3 animate-pulse rounded-xl border-2 border-red-500 bg-red-500/10 p-3">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-red-300">
-            Cancelled
-          </h2>
-          <div className="mt-1 space-y-1 text-sm text-red-200">
+        <section className="mt-4 rounded-2xl border border-coral/40 bg-coral/[0.07] px-4 py-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-coral">Cancelled</h2>
+          <div className="mt-1.5 space-y-1 text-sm text-coral/90">
             {cancelled.map((ticket) => (
               <p key={ticket.id}>
                 KOT {ticket.kotNumber} · {ticket.tableLabel ?? "Parcel"} ·{" "}
@@ -278,62 +314,76 @@ export default function ChefPage() {
       ) : null}
 
       {byDish ? (
-        <section className="mt-3 space-y-2">
+        <section className="mt-4 space-y-2">
           {dishes.length === 0 ? (
-            <p className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
-              No open dishes.
-            </p>
+            <p className="rounded-2xl border border-line bg-surface p-5 text-sm text-muted">No open dishes.</p>
           ) : (
             dishes.map((dish) => (
               <div
                 key={`${dish.name}-${dish.variant}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3"
               >
-                <div>
-                  <p className="text-lg font-semibold">
-                    {dish.name} <span className="text-slate-400">({dish.variant})</span>
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold">
+                    {dish.name} <span className="font-normal text-muted">({dish.variant})</span>
                   </p>
-                  <p className="text-xs text-slate-400">{[...dish.tables].join(", ")}</p>
+                  <p className="mt-0.5 text-xs text-faint">{[...dish.tables].join(", ")}</p>
                 </div>
-                <p className="text-2xl font-semibold text-emerald-300">×{dish.qty}</p>
+                <p className="shrink-0 font-display text-2xl font-medium text-accent">×{dish.qty}</p>
               </div>
             ))
           )}
         </section>
+      ) : boardEmpty ? (
+        <div className="mt-20 flex flex-col items-center px-6 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-jade/20 bg-jade/[0.06] text-jade">
+            <CheckCircle2 className="h-6 w-6" />
+          </span>
+          <h2 className="mt-4 font-display text-2xl font-medium">Kitchen is clear</h2>
+          <p className="mt-1 max-w-sm text-sm leading-relaxed text-muted">
+            New tickets land here automatically. Keep this screen open during service.
+          </p>
+        </div>
       ) : (
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-          {columns.map((column) => (
-            <section key={column.key} className="space-y-2">
-              <h2 className="flex items-center justify-between text-xs font-semibold uppercase tracking-widest text-slate-400">
-                {column.title}
-                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px]">
-                  {column.items.length}
-                </span>
-              </h2>
-              {column.items.length === 0 ? (
-                <p className="rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-4 text-sm text-slate-500">
-                  No tickets yet
-                </p>
-              ) : (
-                column.items.map((ticket) => (
-                  <TicketCard
-                    key={ticket.id}
-                    ticket={ticket}
-                    serverNowMs={serverNowMs}
-                    amber={snapshot?.settings.TICKET_AMBER_S ?? 600}
-                    red={snapshot?.settings.TICKET_RED_S ?? 1200}
-                    busy={busy}
-                    onStart={() =>
-                      act(`start-${ticket.id}`, () => postJson(`/api/orders/${ticket.id}/start`))
-                    }
-                    onReady={() =>
-                      act(`ready-${ticket.id}`, () => postJson(`/api/orders/${ticket.id}/ready`))
-                    }
-                  />
-                ))
-              )}
-            </section>
-          ))}
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {columns.map((column) => {
+            const meta = COLUMN_META[column.key as keyof typeof COLUMN_META];
+            return (
+              <section key={column.key} className="min-w-0">
+                <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
+                  <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                  {column.title}
+                  <span className="rounded-full border border-line px-2 py-0.5 text-[10px] font-medium text-muted">
+                    {column.items.length}
+                  </span>
+                </h2>
+                <div className="space-y-2">
+                  {column.items.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-line px-4 py-6 text-center text-xs text-faint">
+                      {meta.empty}
+                    </div>
+                  ) : (
+                    column.items.map((ticket) => (
+                      <TicketCard
+                        key={ticket.id}
+                        ticket={ticket}
+                        serverNowMs={serverNowMs}
+                        amber={snapshot?.settings.TICKET_AMBER_S ?? 600}
+                        red={snapshot?.settings.TICKET_RED_S ?? 1200}
+                        busy={busy}
+                        onStart={() =>
+                          act(`start-${ticket.id}`, () => postJson(`/api/orders/${ticket.id}/start`))
+                        }
+                        onReady={() =>
+                          act(`ready-${ticket.id}`, () => postJson(`/api/orders/${ticket.id}/ready`))
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </section>
+            );
+          })}
         </div>
       )}
     </main>
@@ -358,61 +408,81 @@ function TicketCard({
   onReady: () => void;
 }) {
   const age = Math.max(0, Math.round((serverNowMs - new Date(ticket.placedAt).getTime()) / 1000));
-  const ageClass = age >= red ? "text-red-300" : age >= amber ? "text-amber-300" : "text-slate-400";
+  const late = age >= red;
+  const warning = !late && age >= amber;
 
   return (
     <article
-      className={`rounded-xl border p-3 ${
+      className={`rounded-2xl border p-4 ${
         ticket.status === "READY"
-          ? "border-violet-500/50 bg-violet-500/10"
+          ? "border-iris/35 bg-iris/[0.05]"
           : ticket.status === "PREPARING"
-            ? "border-sky-500/40 bg-sky-500/5"
-            : "border-slate-700 bg-slate-900/60"
+            ? "border-sky-400/25 bg-sky-400/[0.03]"
+            : "border-line bg-surface"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-lg font-semibold leading-none">KOT {ticket.kotNumber}</p>
-          <p className="mt-1 text-xs text-slate-400">
-            {ticket.tableLabel ?? "Parcel"} · {ticket.zoneName ?? "—"}
-            <span className="ml-1 rounded bg-slate-800 px-1.5 py-0.5 text-[10px]">
-              {ticket.isAc ? "AC" : "Non-AC"}
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-accent">
+            <ChefHat className="h-3.5 w-3.5" /> KOT {ticket.kotNumber}
+          </p>
+          <p className="mt-1 truncate text-base font-semibold leading-none">
+            {ticket.tableLabel ?? "Parcel"}
+            <span className="ml-1.5 text-xs font-normal text-muted">
+              {ticket.zoneName ?? "—"} · {ticket.isAc ? "AC" : "Non-AC"}
             </span>
           </p>
         </div>
-        <span className={`font-mono text-xs ${ageClass}`}>{elapsedLabel(ticket.placedAt, serverNowMs)}</span>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tabular-nums ${
+            late
+              ? "border-coral/35 bg-coral/[0.08] text-coral"
+              : warning
+                ? "border-accent/30 bg-accent/[0.07] text-accent"
+                : "border-line text-muted"
+          }`}
+        >
+          {late ? <Flame className="mr-0.5 inline h-2.5 w-2.5" /> : null}
+          {elapsedLabel(ticket.placedAt, serverNowMs)}
+        </span>
       </div>
 
-      <ul className="mt-2 space-y-1 text-sm">
+      <ul className="mt-3 space-y-1.5">
         {ticket.items.map((item) => (
-          <li key={item.id} className={item.cancelled ? "text-red-300 line-through" : "text-slate-200"}>
-            <span className="font-semibold">{item.qty}×</span> {item.name}{" "}
-            <span className="text-slate-400">({item.variant})</span>
-            {item.note ? <span className="ml-1 text-amber-300">· {item.note}</span> : null}
-            {item.cancelled && item.cancelReason ? (
-              <span className="ml-1 text-[11px] text-red-300">({item.cancelReason})</span>
-            ) : null}
+          <li
+            key={item.id}
+            className={`flex items-start gap-2 text-sm leading-snug ${
+              item.cancelled ? "text-coral line-through" : "text-ink"
+            }`}
+          >
+            <span className="w-5 shrink-0 text-right font-semibold text-accent">{item.qty}×</span>
+            <span className="min-w-0">
+              {item.name} <span className="text-muted">({item.variant})</span>
+              {item.note ? <span className="mt-0.5 block text-[11px] text-accent">{item.note}</span> : null}
+              {item.cancelled && item.cancelReason ? (
+                <span className="block text-[11px] text-coral">({item.cancelReason})</span>
+              ) : null}
+            </span>
           </li>
         ))}
       </ul>
 
       {ticket.note ? (
-        <p className="mt-1 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-200">{ticket.note}</p>
+        <p className="mt-2.5 rounded-lg border border-accent/20 bg-accent/[0.06] px-2.5 py-1.5 text-xs text-accent">
+          {ticket.note}
+        </p>
       ) : null}
 
-      {ticket.status !== "READY" ? (
-        <div className="mt-2 flex gap-2">
-          {ticket.status === "PLACED" ? (
-            <button type="button" className={BTN} disabled={busy !== null} onClick={onStart}>
-              Start
-            </button>
-          ) : null}
-          <button type="button" className={`${BTN_PRIMARY} flex-1`} disabled={busy !== null} onClick={onReady}>
-            Ready
-          </button>
-        </div>
+      {ticket.status === "PLACED" ? (
+        <button type="button" className={`${BTN_PRIMARY} mt-3 w-full`} disabled={busy !== null} onClick={onStart}>
+          Start
+        </button>
+      ) : ticket.status === "PREPARING" ? (
+        <button type="button" className={`${BTN_PRIMARY} mt-3 w-full`} disabled={busy !== null} onClick={onReady}>
+          <CheckCircle2 className="h-3.5 w-3.5" /> Ready
+        </button>
       ) : (
-        <p className="mt-2 rounded bg-violet-500/15 px-2 py-1 text-center text-xs font-medium text-violet-200">
+        <p className="mt-3 rounded-lg border border-iris/20 bg-iris/[0.07] px-2 py-1.5 text-center text-[11px] font-medium text-iris">
           Waiting for pickup
         </p>
       )}

@@ -5,10 +5,12 @@ One mini PC runs the whole system on the venue LAN: camera table detection, the
 3-minute “nobody took the order” alert, waiter/chef apps, reception billing and an
 owner dashboard. No internet or cloud account is required during service.
 
-**Status: v1 complete (Phases 1–8).** Engine, vision, waiter/chef PWAs,
-reception/billing, admin, camera calibration, setup wizard, installer/backups/health
-and pilot tooling are built and verified. The remaining work is on-site: hardware,
-real-camera placement, staff devices and the pilot.
+**Status: v1 complete (Phases 1–8), UI-refreshed and menu-loaded.** Engine, vision,
+waiter/chef PWAs, reception/billing, admin, camera calibration, setup wizard,
+installer/backups/health and pilot tooling are built and verified. The production UI
+has been refreshed end-to-end, and the real 120-item AC/non-AC dine-in card is
+imported. The remaining work is on-site: hardware, real-camera placement, staff
+devices and the pilot.
 
 | Test | Result |
 |---|---|
@@ -69,7 +71,38 @@ docker compose run --rm migrate npm run db:seed -w @dinesense/db
 
 Open `https://localhost` (Caddy internal CA) or `http://localhost:3000`. The demo
 seed creates both floors (G1–G5, F1–F6), a small Indo-Chinese menu, two cameras and
-the four demo users.
+the four demo users. The seed menu is intentionally small; the real card is the
+import-ready CSV described below.
+
+### Restaurant menu (AC / non-AC)
+
+The live dine-in card is captured in `data/menu-chinese-chef.csv`:
+
+| Section | Items |
+|---|---:|
+| Veg Soups | 11 |
+| Non Veg Soups | 11 |
+| Veg Starters | 18 |
+| Non Veg Starters | 17 |
+| Veg Rice | 12 |
+| Non Veg Rice | 22 |
+| Veg Noodles | 8 |
+| Non Veg Noodles | 16 |
+| Choupsey | 5 |
+| **Total** | **120** |
+
+It contains 235 variants and 470 floor prices. Ground-floor prices come from
+`Menu non Ac.pdf`; first-floor prices come from `Menu_AC 1.pdf`. It keeps Half/Full
+wherever the card prints both, Full-only dishes where the half column is a dash, and
+Dry/Gravy variants for Manchurian/Chilly dishes plus the slash-priced Malaysian
+rice/noodles. The original 93 Zomato-priced items (plus demo rows) were archived, not
+deleted, so historical bills and reports remain intact.
+
+Import it from **Admin → Menu → Choose file → Preview → Import**. Preview validation
+accepts all 235 rows / 120 groups with zero errors or warnings. Re-importing updates
+matching items in place; keep old items archived rather than deleting them. The two
+source PDFs are kept in the repo root but git-ignored because they are large image
+files; the CSV is the small, reviewable source of truth.
 
 ### Vision demo (no cameras)
 
@@ -87,10 +120,18 @@ polygons from the database.
 
 ## What it does
 
+**UI (all roles)** — warm ink + saffron palette, Fraunces display type and Manrope
+UI type, Lucide icons, a shared brand mark, tactile control sizes for busy hands and
+quiet state surfaces instead of alert-colour floods. The login screen, waiter floor,
+searchable menu + cart sheet, chef ticket board, reception paper bill, admin sidebar,
+dashboard and setup wizard were all rebuilt on this system; PWA icons and theme
+colour match.
+
 **Waiter (phone PWA)** — PIN keypad, “Start shift” sound/wake-lock unlock, one huge
-“Next up” task, floor board with countdowns, tap-to-order menu with floor prices,
-Half/Full and Dry/Gravy variants, quick notes, parcels, move table, request bill,
-camera mute/monitor, and an offline order queue (`clientKey` idempotent).
+“Next up” task, floor board with countdowns, searchable tap-to-order menu with the
+correct AC or non-AC floor prices, Half/Full and Dry/Gravy variants, quick notes,
+sticky cart and review sheet, parcels, move table, request bill, camera
+mute/monitor, and an offline order queue (`clientKey` idempotent).
 
 **Chef (tablet)** — New / Preparing / Ready columns, oldest first, age timers
 (amber 10 min / red 20 min), notes, By-dish aggregation, out-of-stock toggles,
@@ -100,10 +141,11 @@ new/cancelled chimes and wake lock.
 bill with extras/discounts/item voids, automatic tax and round-off, split
 cash/UPI/card payments, 80 mm/A4 print layouts, void and admin reopen with audit.
 
-**Owner/admin** — dashboard presets (earnings, bills, average, orders/items,
-top/bottom dishes, floor/hour/payment splits, operations), CSV export, menu manager
-with CSV/XLSX import preview, floors/tables, staff credentials, timers/tax/business
-day, restaurant profile, cameras/calibration, health and diagnostics, pilot review.
+**Owner/admin** — sidebar console with dashboard presets (earnings, bills, average,
+orders/items, top/bottom dishes, floor/hour/payment splits, operations), CSV export,
+menu manager with CSV/XLSX import preview, per-floor variant prices and an archived
+menu filter, floors/tables, staff credentials, timers/tax/business day, restaurant
+profile, cameras/calibration, health and diagnostics, pilot review.
 
 **The core rule** — a table becomes `occupied` when the camera confirms a seated
 party; a 180-second deadline is stored in Postgres; if no order exists when it
@@ -142,6 +184,7 @@ packages/db       Prisma schema/migrations/seed + DB services (engine, jobs, rep
 services/vision   FastAPI + YOLO11n + ByteTrack, pytest, demo generator
 e2e               Playwright: devices, offline, reception, admin, cameras, setup, pilot
 docs              INSTALL, HARDWARE, HTTPS, PILOT, quick guides
+data              menu-chinese-chef.csv (120-item AC/non-AC import card); other data ignored
 scripts           install/update/backup/restore/healthcheck/diagnostics, CA, icons
 install.sh        one-command Ubuntu mini-PC install
 docker-compose.yml
@@ -196,6 +239,14 @@ PWA shell, reception billing/printing, admin configuration/health/diagnostics, c
 calibration, setup wizard and pilot shadow mode. E2E needs the dev console reset
 endpoint, so run it on a dev stack (`ENABLE_DEV_CONSOLE=true`).
 
+The redesigned menu was also verified against the source PDFs:
+
+- 235 CSV rows → **120 groups**, 235 variants, 470 floor prices, **0 errors / 0 warnings**.
+- Active menu: **120 items / 9 sections**; archived: 102 old/demo rows.
+- Spot checks: Veg Thai Green Soup is **₹90/₹180** on Ground vs **₹105/₹195** on
+  First; Chicken Chilly is **₹140/₹150/₹280/₹300** vs **₹155/₹165/₹295/₹315**.
+- The full Playwright suite passes after the menu import and UI refresh.
+
 **Verified evidence:** the hand-calculated bill (2×₹90 noodles + 2×₹20 water − 10%
 + 5% GST = ₹212.00, CGST/SGST ₹5.05 each, split ₹112 cash + ₹100 UPI); backup restore
 21/21 tables; power-cycle timer/data persistence; HTTPS via Caddy's internal CA.
@@ -211,12 +262,12 @@ PC), physical phones/tablets, real RTSP cameras, and paper printing. The scripts
 | 1 | `sudo ./install.sh` on the mini PC; install the CA | Stack up, admin password/setup URL printed |
 | 2 | Complete `/setup` and the guided test | Table runs seat → alert → order → ready → served → paid → free |
 | 3 | Seat a table; wait 3 min (or use the dev time-skip on a dev stack) | Red waiter alert, sound/vibration when shift is started |
-| 4 | Order from Ground and AC tables | Correct floor price on each |
+| 4 | Order from Ground and AC tables; try Half, Full and Dry/Gravy | Ground uses non-AC prices, First uses AC prices; each variant is correct |
 | 5 | Chef Start → Ready; waiter Mark served; request bill | Chef chime, food-ready alert outranks waiting, table dining |
 | 6 | Reception: water, 10% discount, split payment, print | Correct totals; PAID; table needs_cleaning; 80 mm/A4 output |
 | 7 | Airplane-mode an order, then reconnect | Queued once, one ticket, no duplicate |
 | 8 | Chef stock toggle / By dish / cancel | Waiter menu greys instantly; aggregation and red cancellation |
-| 9 | Admin menu import, floors/tables/staff/settings | Everything changeable without SQL |
+| 9 | Admin imports `data/menu-chinese-chef.csv`; edit floors/tables/staff/settings | 120 items in 9 sections with both floor price sets; no SQL needed |
 | 10 | Admin dashboard vs cash book; CSV export | Totals match; CSV opens |
 | 11 | Camera add/test/calibrate 11 zones; mute; offline | Correct zones, mute works, offline banner |
 | 12 | Admin Health + diagnostics ZIP | DB/worker/disk/backup/clock/cameras; no secrets/video |
@@ -262,8 +313,8 @@ PC), physical phones/tablets, real RTSP cameras, and paper printing. The scripts
   An ordered/unpaid visit is never freed by the camera.
 - Manual table override is always available and audited; setting a table to `free`
   voids the open visit.
-- Takeaway prices use the first floor by sort (Ground/non-AC); stock toggles apply
-  to all floors. Both are Phase 3 choices, changeable later.
+- Takeaway prices use the first zone by sort — Ground/non-AC — while dine-in uses
+  the table's floor (Ground/non-AC or First/AC); stock toggles apply to all floors.
 - Camera RTSP credentials are AES-GCM encrypted at rest, visible only to the vision
   service (never to a browser). Calibration polygons are normalized 0–1 and apply in
   real-camera mode; `VISION_DEMO=true` uses `zones.json` and ignores database changes.
@@ -296,5 +347,6 @@ reservations, staff recognition, loyalty and WhatsApp/SMS.
 | `docs/QUICK-ADMIN.md` | One-page owner guide |
 | `DineSense_Masterplan_v2.md` | Product requirements |
 
-Built incrementally in eight phases; see `git log` for the engine, vision, staff apps,
-billing, admin, camera, productization and pilot commits.
+Built incrementally in eight phases. `git log` covers the engine, vision, staff apps,
+billing, admin, camera, productization and pilot commits; the warm-ink UI refresh and
+the real AC/non-AC PDF menu are the latest working-tree changes.
