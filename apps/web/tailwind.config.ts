@@ -1,10 +1,42 @@
 import type { Config } from "tailwindcss";
 
+const status = (name: string) => ({
+  DEFAULT: `var(--status-${name}-bg)`,
+  foreground: `var(--status-${name}-fg)`,
+});
+
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
+        /* Semantic UI tokens (light/dark via CSS variables). */
+        background: "var(--bg)",
+        foreground: "var(--text)",
+        card: {
+          DEFAULT: "var(--surface)",
+          raised: "var(--surface-raised)",
+        },
+        border: "var(--border)",
+        "muted-foreground": "var(--muted)",
+        brand: {
+          DEFAULT: "var(--brand)",
+          foreground: "var(--brand-fg)",
+          text: "var(--brand-text)",
+        },
+        overlay: "var(--overlay)",
+        status: {
+          free: status("free"),
+          occupied: status("occupied"),
+          "needs-order": status("needs-order"),
+          ordered: status("ordered"),
+          "food-ready": status("food-ready"),
+          dining: status("dining"),
+          "bill-requested": status("bill-requested"),
+          "needs-cleaning": status("needs-cleaning"),
+        },
+
+        /* Legacy screen tokens — removed as each screen migrates. */
         canvas: "#0B0A08",
         surface: "#14110D",
         raised: "#1C1813",
@@ -18,19 +50,6 @@ const config: Config = {
         coral: "#F0795F",
         iris: "#B79BE5",
         clay: "#E39A63",
-        slate: {
-          50: "#F8F4EB",
-          100: "#F0EADF",
-          200: "#E0D8C9",
-          300: "#C9BFAD",
-          400: "#A79D8E",
-          500: "#8D8374",
-          600: "#6F6659",
-          700: "#544C42",
-          800: "#332D26",
-          900: "#1D1A15",
-          950: "#100E0B",
-        },
       },
       fontFamily: {
         sans: ["var(--font-manrope)", "ui-sans-serif", "system-ui", "sans-serif"],
@@ -38,9 +57,13 @@ const config: Config = {
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       borderRadius: {
-        "4xl": "2rem",
+        control: "0.75rem",
+        card: "1rem",
+        sheet: "1.5rem",
       },
       boxShadow: {
+        card: "0 1px 2px rgb(28 25 21 / 0.04)",
+        float: "0 8px 24px rgb(28 25 21 / 0.12)",
         sheet: "0 40px 120px -30px rgba(0,0,0,0.85)",
         paper: "0 30px 80px -30px rgba(0,0,0,0.7)",
       },

@@ -52,7 +52,7 @@ survives an IP change); use that in `SITE_ADDRESS` and point it at the mini PC.
 1. In `.env`:
 
    ```bash
-   SITE_ADDRESS=dinesense.local   # or the mini PC's LAN IP, e.g. 192.168.1.46
+   SITE_ADDRESS=dinesense.local   # or the mini PC's current LAN IP
    COOKIE_SECURE=true
    ```
 
@@ -86,12 +86,17 @@ survives an IP change); use that in `SITE_ADDRESS` and point it at the mini PC.
 5. Open `https://dinesense.local` (or `https://<LAN-IP>`) on each device, sign in,
    and use “Add to Home Screen”. The app then runs standalone.
 
+   **No CA on the phone yet?** Caddy also serves the app over plain HTTP on port 80
+   (`http://<LAN-IP>/`) and the root certificate at `http://<LAN-IP>/ca.crt`. That
+   lets a phone open the app immediately; use HTTPS for PWA install and for
+   `COOKIE_SECURE=true`. The fallback is LAN-only and does not redirect to HTTPS.
+
 6. Verify from a machine on the LAN:
 
    ```bash
    curl -k https://dinesense.local/api/health
-   curl -k https://192.168.1.46/api/health
-   openssl s_client -connect 192.168.1.46:443 -servername 192.168.1.46 </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer
+   curl --cacert caddy-root.crt https://<LAN-IP>/api/health
+   openssl s_client -connect <LAN-IP>:443 -servername <LAN-IP> </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer
    ```
 
 ## Important

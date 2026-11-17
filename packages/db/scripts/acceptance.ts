@@ -177,7 +177,7 @@ async function orderOnce() {
   });
 }
 
-// 1. Occupied starts the 180s decision timer.
+// 1. Occupied starts the 120s decision timer.
 await resetRuntime();
 const seatedAt = await sim("occupied");
 const firstTable = await tableRow();
@@ -185,10 +185,10 @@ const firstSession = await openSession();
 check("VISION_OCCUPIED sets the table occupied", firstTable.state === "occupied", firstTable.state);
 check("a visit session is opened", firstSession !== null);
 check(
-  "decision deadline is 180s after seated",
+  "decision deadline is 120s after seated",
   firstSession?.decisionDeadline !== null &&
     firstSession?.decisionDeadline !== undefined &&
-    approx(firstSession.decisionDeadline.getTime(), seatedAt.getTime() + 180_000, 2_000),
+    approx(firstSession.decisionDeadline.getTime(), seatedAt.getTime() + 120_000, 2_000),
   firstSession?.decisionDeadline?.toISOString() ?? "none",
 );
 check(
@@ -409,7 +409,7 @@ await workerTick();
 check("worker heartbeat is written to settings", (await workerLastTick()) !== null);
 
 const settings = await loadSettings();
-check("DECIDE_WINDOW_S is still the required 180s", settings.DECIDE_WINDOW_S === 180);
+check("DECIDE_WINDOW_S is still the required 120s", settings.DECIDE_WINDOW_S === 120);
 
 // ---------------------------------------------------------------------------
 // Phase 3: menu, kitchen lifecycle, cancellation rules, takeaway and moving.
@@ -882,10 +882,10 @@ try {
 }
 check("admin rejects an invalid timer value", invalidSettingRejected);
 await updateAdminSettings({
-  settings: { DECIDE_WINDOW_S: 180, TAX_RATE_PERCENT: 0, TAX_MODE: "exclusive" },
+  settings: { DECIDE_WINDOW_S: 120, TAX_RATE_PERCENT: 0, TAX_MODE: "exclusive" },
   actorId: adminUser.id,
 });
-check("settings were restored for the rest of the suite", (await loadSettings()).DECIDE_WINDOW_S === 180);
+check("settings were restored for the rest of the suite", (await loadSettings()).DECIDE_WINDOW_S === 120);
 
 const adminZone = await createZone({ name: "Acceptance Floor", actorId: adminUser.id });
 const adminTable = await createTable({

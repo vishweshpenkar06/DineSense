@@ -7,7 +7,7 @@
 ## 0. Instructions to the AI coding agent (read first)
 
 1. Read §1–§7 once for context. Then build **only the phase the user names** (§16), reading only the sections that phase lists. Do not build ahead.
-2. **Framework first.** Phases 1–2 build the engine (table states, 3-minute timer, tasks, realtime, camera detection). Nothing else is built on top until those pass their acceptance tests.
+2. **Framework first.** Phases 1–2 build the engine (table states, 2-minute timer, tasks, realtime, camera detection). Nothing else is built on top until those pass their acceptance tests.
 3. Every phase ends with: it runs with `docker compose up`, typecheck + tests pass, a short README note on what was added, one git commit. Then report in ≤10 lines: what works, what you could not do, what to test by hand.
 4. If a requirement here is ambiguous, use the **default given in §19** and note the assumption in your report. Do not stop to ask unless it blocks the phase.
 5. Never hardcode restaurant-specific values (tax, prices, names, timers, table counts). They live in the database/settings.
@@ -35,7 +35,7 @@
 4. The receptionist calculates bills by hand (different AC/non-AC prices, extras like water bottles).
 5. The owner has no numbers: earnings, what sells, busy hours.
 
-**What the system does (one paragraph):** Cameras (the restaurant's CCTV) watch the tables. When a table becomes occupied, a **3-minute timer** starts. If nobody has taken that table's order when the 3 minutes end, the waiter's app shows a clear alert: *"Table 7 (First Floor) is waiting to order."* The waiter goes, takes the order, and **taps it into the app** instead of writing on paper. The chef's screen shows it instantly. When the food is ready the waiter is told. The receptionist sees each table's running bill (with AC/non-AC prices and extras like water bottles) and closes it. The owner sees total earnings and total food ordered for any day or date range.
+**What the system does (one paragraph):** Cameras (the restaurant's CCTV) watch the tables. When a table becomes occupied, a **2-minute timer** starts. If nobody has taken that table's order when the 2 minutes end, the waiter's app shows a clear alert: *"Table 7 (First Floor) is waiting to order."* The waiter goes, takes the order, and **taps it into the app** instead of writing on paper. The chef's screen shows it instantly. When the food is ready the waiter is told. The receptionist sees each table's running bill (with AC/non-AC prices and extras like water bottles) and closes it. The owner sees total earnings and total food ordered for any day or date range.
 
 **Success looks like (owner's view):** the waiter stops forgetting tables, paper chits disappear, the chef never asks "what's pending?", bills are right the first time, and the owner can see yesterday's sales in ten seconds.
 
@@ -62,7 +62,7 @@ The apps are installed to the phone/tablet home screen (**PWA**, full-screen, ow
 
 ## 3. Fixed Requirements (non-negotiable)
 
-1. **Decision timer = 3 minutes (180 seconds)**, counted from the moment a table is confirmed **occupied**. Stored as setting `DECIDE_WINDOW_S`, default **180**. Admin may change it; the default must be 180.
+1. **Decision timer = 2 minutes (120 seconds)**, counted from the moment a table is confirmed **occupied**. Stored as setting `DECIDE_WINDOW_S`, default **120**. Admin may change it; the default must be 120.
 2. Four roles: **waiter, chef, receptionist, admin**.
 3. Camera detects per table: **free / occupied**. The waiter app can show the **live camera view**.
 4. When the timer ends and no order exists → waiter gets an in-app alert **"Table X is waiting to order"** (not an OS push notification).
@@ -122,10 +122,10 @@ All five run with **Docker Compose** on one mini PC (`restart: unless-stopped`, 
 2. Vision sees a person in Table 7's zone continuously for SEATED_CONFIRM_S (20 s)
    → sends event: occupied.
 3. App opens a SESSION for Table 7, table state = OCCUPIED.
-   decision_deadline = occupied_at + 180 s.        ← the 3-minute timer
+   decision_deadline = occupied_at + 120 s.        ← the 2-minute timer
 4. Waiter's Table board shows Table 7 amber with a visible countdown.
-5. If an order for Table 7 is placed before 180 s → timer cancelled, no alert.
-   Otherwise, at 180 s the WORKER:
+5. If an order for Table 7 is placed before 120 s → timer cancelled, no alert.
+   Otherwise, at 120 s the WORKER:
      - table state = NEEDS_ORDER
      - creates task "Table 7 is waiting to order" (priority 2)
      - waiter app: banner + loud sound + vibration
@@ -156,7 +156,7 @@ A **session** = one party's visit (`dine_in` at a table, or `takeaway` with no t
 | State | Meaning | Color |
 |---|---|---|
 | `free` | No session | Green |
-| `occupied` | Seated; 3-minute decision timer running | Amber + countdown |
+| `occupied` | Seated; 2-minute decision timer running | Amber + countdown |
 | `needs_order` | Timer ended, no order yet; waiter alerted | Red, pulsing |
 | `ordered` | Order sent; kitchen working | Blue |
 | `food_ready` | Chef marked ready; waiting for pickup | Purple |
@@ -192,8 +192,8 @@ A **session** = one party's visit (`dine_in` at a table, or `takeaway` with no t
 
 ## 7. Timer & Task Engine (the heart of the product)
 
-### 7.1 The 3-minute rule
-- `DECIDE_WINDOW_S = 180` (setting). Counted from the instant the table becomes `occupied`.
+### 7.1 The 2-minute rule
+- `DECIDE_WINDOW_S = 120` (setting). Counted from the instant the table becomes `occupied`.
 - The deadline is stored on the session. The **worker** checks every 5 seconds: `occupied` sessions with `now ≥ decision_deadline` and zero orders → fire `TIMER_EXPIRED`. Tolerance ±5 s.
 - Restart-safe: after a worker/server restart it processes all overdue deadlines immediately (no lost alerts, no duplicates).
 - Clients show a countdown computed from the stored deadline (not their own clocks; use server time offset).
@@ -202,7 +202,7 @@ A **session** = one party's visit (`dine_in` at a table, or `takeaway` with no t
 | Type | Created when | Priority | Auto-completes when |
 |---|---|---|---|
 | `food_ready` | chef marks ready | 1 (highest) | waiter taps served |
-| `needs_order` | 3-minute timer ends | 2 | order placed (auto-cancel) or abandoned |
+| `needs_order` | 2-minute timer ends | 2 | order placed (auto-cancel) or abandoned |
 | `bill_requested` | waiter requests bill | 3 | bill finalized |
 | `clean_table` | bill paid | 4 | CLEANED, or new party sits |
 | `custom` | waiter/receptionist adds ("water", "extra plate") | 4 | done |
@@ -219,7 +219,7 @@ Ordering for the waiter's "Next up": priority ascending, then oldest first. **Fl
 ### 7.4 Settings (admin-editable, in DB)
 | Key | Default |
 |---|---|
-| `DECIDE_WINDOW_S` | **180** |
+| `DECIDE_WINDOW_S` | **120** |
 | `SEATED_CONFIRM_S` | 20 |
 | `EMPTY_CONFIRM_S` | 60 |
 | `SNOOZE_S` | 300 |
@@ -433,7 +433,7 @@ First-run wizard in the admin app:
 4. Menu import from **CSV/XLSX**:
    `category, item, local_name, variant, price_ground, price_first, veg(Y/N), needs_kitchen(Y/N)` → preview with errors → import. Items missing a floor price are flagged and unavailable on that floor until fixed.
 5. Staff accounts and PINs.
-6. Timers and tax review (shows 3-minute timer prominently).
+6. Timers and tax review (shows 2-minute timer prominently).
 7. "Test run": runs the simulator through occupied → alert → order → ready → bill, so the owner sees it work.
 
 Seed a small realistic Indo-Chinese demo menu for development only (Veg Hakka Noodles Half/Full, Veg Manchurian Dry/Gravy, Schezwan Fried Rice, Hot & Sour Soup, Paneer Chilli, Chicken Lollipop, packaged water, cold drinks).
@@ -462,11 +462,11 @@ Seed a small realistic Indo-Chinese demo menu for development only (Veg Hakka No
 
 ### Phase 1 — Core Engine ("the framework")
 **Read:** §0, §3, §4, §6, §7, §9, §10.
-**Build:** monorepo (`apps/web`, `apps/worker`, `services/vision`, `packages/core`), Docker Compose (db, web, worker, caddy placeholder), Prisma schema + migrations for the whole §9 model, seed (2 zones, 11 tables, demo menu, demo users), **pure core logic** in `packages/core`: `nextTableState`, task rules, timer evaluation, priority picker — with thorough Vitest tests. Vision event/heartbeat endpoints, worker with the 3-minute timer, SSE + snapshot, minimal auth, and the **Dev console** (live 11-table grid, simulate occupied/empty, event log, tasks, time-skip). Minimal "place test order" button in the dev console.
+**Build:** monorepo (`apps/web`, `apps/worker`, `services/vision`, `packages/core`), Docker Compose (db, web, worker, caddy placeholder), Prisma schema + migrations for the whole §9 model, seed (2 zones, 11 tables, demo menu, demo users), **pure core logic** in `packages/core`: `nextTableState`, task rules, timer evaluation, priority picker — with thorough Vitest tests. Vision event/heartbeat endpoints, worker with the 2-minute timer, SSE + snapshot, minimal auth, and the **Dev console** (live 11-table grid, simulate occupied/empty, event log, tasks, time-skip). Minimal "place test order" button in the dev console.
 **Done when (acceptance):**
-- Simulating `occupied` on a table starts a 180 s countdown; at 180 s ± 5 s a `needs_order` task exists and the table is `needs_order`.
+- Simulating `occupied` on a table starts a 120 s countdown; at 120 s ± 5 s a `needs_order` task exists and the table is `needs_order`.
 - Placing an order at 100 s cancels it (no task is ever created).
-- Restarting the worker at 120 s still fires the task at ~180 s, exactly once.
+- Restarting the worker at 60 s still fires the task at ~120 s, exactly once.
 - Sending the same event twice (same `event_id`) causes no duplicates.
 - `VISION_EMPTY` never frees a table with an unpaid bill; an unordered empty party is closed as abandoned after 60 s.
 - All state-machine rows in §6.3 have passing tests.
@@ -509,7 +509,7 @@ Seed a small realistic Indo-Chinese demo menu for development only (Veg Hakka No
 
 ## 17. Acceptance Scenarios (the owner will test these at handover)
 
-1. A party sits at G3 → 3 minutes pass with no order → the waiter's phone shows "Table G3 is waiting to order" with sound and vibration.
+1. A party sits at G3 → 2 minutes pass with no order → the waiter's phone shows "Table G3 is waiting to order" with sound and vibration.
 2. A party sits at F2 and the waiter takes the order at 2 minutes → no alert ever appears.
 3. Waiter taps Snooze → alert returns 5 minutes later.
 4. Waiter ignores the alert for 2 minutes → receptionist screen flags it red.
@@ -539,7 +539,7 @@ Customer QR ordering, online payment gateway, tips, inventory/supply notificatio
 
 | Topic | Default |
 |---|---|
-| Timer | 180 s from `occupied` |
+| Timer | 120 s from `occupied` |
 | Currency/locale | ₹, `en-IN`, `Asia/Kolkata` |
 | Tax | 0 until set by owner; exclusive mode |
 | Surcharge | None (AC is in prices) |

@@ -2,7 +2,7 @@
 
 **Local-first restaurant operations for a small two-floor Indo-Chinese restaurant.**
 One mini PC runs the whole system on the venue LAN: camera table detection, the
-3-minute “nobody took the order” alert, waiter/chef apps, reception billing and an
+2-minute “nobody took the order” alert, waiter/chef apps, reception billing and an
 owner dashboard. No internet or cloud account is required during service.
 
 **Status: v1 complete (Phases 1–8), UI-refreshed and menu-loaded.** Engine, vision,
@@ -17,7 +17,7 @@ devices and the pilot.
 | Core domain (`npm run test:core`) | **119/119** |
 | DB/API acceptance (`npm run acceptance`) | **119/119** |
 | Vision service (`pytest`) | **36/36** |
-| End-to-end Playwright (`npm run test:e2e`) | **8/8** |
+| End-to-end Playwright (`npm run test:e2e`) | **9/9** |
 | Typecheck | clean |
 
 ---
@@ -120,12 +120,11 @@ polygons from the database.
 
 ## What it does
 
-**UI (all roles)** — warm ink + saffron palette, Fraunces display type and Manrope
-UI type, Lucide icons, a shared brand mark, tactile control sizes for busy hands and
-quiet state surfaces instead of alert-colour floods. The login screen, waiter floor,
-searchable menu + cart sheet, chef ticket board, reception paper bill, admin sidebar,
-dashboard and setup wizard were all rebuilt on this system; PWA icons and theme
-colour match.
+**UI (all roles)** — the shipped screens use the warm ink identity (Fraunces display
+type, Manrope UI type, Lucide icons). U0 adds the next light-first design system:
+semantic light/dark tokens, Manrope for work screens, shared primitives and status
+colours that are loud only when a table needs someone. Screens migrate to it phase by
+phase (U1–U6); until then the existing warm-ink screens remain intact.
 
 **Waiter (phone PWA)** — PIN keypad, “Start shift” sound/wake-lock unlock, one huge
 “Next up” task, floor board with countdowns, searchable tap-to-order menu with the
@@ -148,9 +147,43 @@ menu filter, floors/tables, staff credentials, timers/tax/business day, restaura
 profile, cameras/calibration, health and diagnostics, pilot review.
 
 **The core rule** — a table becomes `occupied` when the camera confirms a seated
-party; a 180-second deadline is stored in Postgres; if no order exists when it
+party; a 120-second deadline is stored in Postgres; if no order exists when it
 expires, the worker creates a priority-2 “Table X is waiting to order” task. Menus,
 timers, tax, table counts and staff all live in the database, never in code.
+
+### UI foundations (redesign phase U0)
+
+The multi-phase plan lives in `docs/UI-REDESIGN.md`. U0 adds the foundation without
+changing any screen behaviour:
+
+- Light/dark semantic tokens in `globals.css` (`--bg`, `--surface`, `--border`,
+  `--text`, `--muted`, `--brand` and eight status pairs), mapped in
+  `tailwind.config.ts`; the old `slate` override is gone.
+- Theme defaults per role: waiter follows the system, chef is dark, reception and
+  admin are light. A blocking theme script prevents a first-paint flash.
+- Shared primitives in `apps/web/src/components/ui/`; `/dev/ui` (dev console only)
+  renders every component in both themes without needing the database.
+- `e2e/screenshots.spec.ts` captures each role and the gallery at the review
+  viewports into `docs/screenshots/`.
+
+Tailwind stays on **3.4** with a shadcn-style Radix setup rather than upgrading to
+Tailwind 4. Allowed dependencies and why:
+
+| Dependency | Why |
+|---|---|
+| `@radix-ui/react-dialog`, `-tabs`, `-select`, `-dropdown-menu`, `-slot` | Accessible dialog/sheet, tabs, select, dropdown and button-as-child behaviour |
+| `class-variance-authority`, `clsx`, `tailwind-merge` | Typed component variants and predictable class merging |
+| `sonner` | Toast feedback (success, error, loading) |
+| `recharts` | Dashboard charts with axes and tooltips (wired in U5) |
+| `lucide-react` | Icons (already present) |
+
+The old screens still use their legacy tokens and raw palette classes until their
+own phase (U1–U6); the component gallery is the review surface for U0.
+
+**Temporary all-role review mode:** `DEMO_ALLOW_ALL_ROLES=true` lets any signed-in
+staff account open every staff screen and endpoint. It is for checking the waiter,
+chef, reception and admin views side by side on one browser/device. The default is
+`false`; turn it off and restart web after the review.
 
 ---
 
@@ -228,7 +261,7 @@ npm run test:e2e              # Playwright; dev stack at 127.0.0.1:3000
 docker compose run --rm --no-deps vision pytest
 ```
 
-`npm run acceptance` exercises the real engine and database: the 180-second timer and
+`npm run acceptance` exercises the real engine and database: the 120-second timer and
 restart idempotency, orders/tasks, abandonment, vision mute, kitchen lifecycle,
 takeaway, billing to the paisa, split payments, void/reopen, reports vs independently
 summed raw bills, admin CRUD/menu import, camera encryption/filtering/calibration and
@@ -304,7 +337,7 @@ PC), physical phones/tablets, real RTSP cameras, and paper printing. The scripts
 
 ## Defaults and documented assumptions
 
-- Timer **180 s**; timestamps UTC displayed in `Asia/Kolkata`; money integer paise.
+- Timer **120 s**; timestamps UTC displayed in `Asia/Kolkata`; money integer paise.
 - Business day starts **05:00** IST (configurable); bills/numbers/reports follow it.
 - Tax defaults to **0/exclusive**; the owner sets rate/mode in Admin → Settings.
 - Bill numbers allocate on first open, format `DS-<year>-<6 digits>`, never reused.
@@ -345,6 +378,7 @@ reservations, staff recognition, loyalty and WhatsApp/SMS.
 | `docs/QUICK-CHEF.md` | One-page chef guide |
 | `docs/QUICK-RECEPTION.md` | One-page reception guide |
 | `docs/QUICK-ADMIN.md` | One-page owner guide |
+| `docs/UI-REDESIGN.md` | Multi-phase UI redesign plan, tokens and component specs |
 | `DineSense_Masterplan_v2.md` | Product requirements |
 
 Built incrementally in eight phases. `git log` covers the engine, vision, staff apps,

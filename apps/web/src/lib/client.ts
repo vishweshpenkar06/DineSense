@@ -44,6 +44,9 @@ export function isRetryable(error: unknown): boolean {
 }
 
 export function errorMessage(error: unknown): string {
+  if (error instanceof HttpError && error.status === 403 && error.message === "Not allowed for this role") {
+    return "This action needs a different staff role. Sign out and use the correct PIN for this screen.";
+  }
   if (error instanceof Error) return error.message;
   return "Something went wrong";
 }

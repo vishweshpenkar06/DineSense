@@ -43,7 +43,7 @@ test("owner configures settings, tables and imports a menu without the database"
       return data.settings.DECIDE_WINDOW_S;
     })
     .toBe(240);
-  await request.put("/api/admin/settings", { data: { settings: { DECIDE_WINDOW_S: 180 } } });
+  await request.put("/api/admin/settings", { data: { settings: { DECIDE_WINDOW_S: 120 } } });
 
   await page.getByRole("button", { name: "Floors & tables" }).click();
   await page.getByPlaceholder("New table label").first().fill("T9");

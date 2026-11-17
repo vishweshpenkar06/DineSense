@@ -105,7 +105,6 @@ function OrderScreen() {
 
   const [context, setContext] = useState<OrderContextResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [orderNote, setOrderNote] = useState("");
   const [lastLineKey, setLastLineKey] = useState<string | null>(null);
@@ -119,7 +118,6 @@ function OrderScreen() {
       const queryString = tableId ? `tableId=${tableId}` : `sessionId=${sessionId}`;
       const data = await getJson<OrderContextResponse>(`/api/order-context?${queryString}`);
       setContext(data);
-      setCategoryId((current) => current ?? data.menu.categories[0]?.id ?? null);
       setError(null);
     } catch (caught) {
       setError(errorMessage(caught));
@@ -144,7 +142,6 @@ function OrderScreen() {
     return () => source.close();
   }, [load]);
 
-  const category = context?.menu.categories.find((entry) => entry.id === categoryId) ?? null;
   const search = query.trim().toLowerCase();
   const searchResults = useMemo(() => {
     if (!context || !search) return [];
@@ -280,9 +277,20 @@ function OrderScreen() {
       </header>
 
       {error ? (
-        <div className="mt-3 flex items-start gap-2 rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
+        <div className="mt-3 flex flex-wrap items-start gap-2 rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-          {error}
+          <span className="min-w-0 flex-1">{error}</span>
+          {error.includes("different staff role") ? (
+            <button
+              type="button"
+              onClick={() => {
+                void fetch("/api/auth/logout", { method: "POST" }).then(() => router.replace("/login"));
+              }}
+              className="rounded-lg border border-coral/40 px-2.5 py-1 text-xs font-medium"
+            >
+              Switch account
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -321,28 +329,6 @@ function OrderScreen() {
                 </button>
               ) : null}
             </label>
-            <div className="mt-2.5 flex gap-1.5 overflow-x-auto pb-0.5">
-              {context.menu.categories.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  onClick={() => {
-                    setCategoryId(entry.id);
-                    setQuery("");
-                  }}
-                  className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
-                    entry.id === categoryId && !search
-                      ? "bg-accent text-canvas"
-                      : "border border-line bg-surface text-muted hover:text-ink"
-                  }`}
-                >
-                  {entry.name}
-                  <span className={`ml-1.5 text-[11px] ${entry.id === categoryId && !search ? "text-canvas/60" : "text-faint"}`}>
-                    {entry.items.length}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
 
           {search ? (
@@ -368,25 +354,36 @@ function OrderScreen() {
               ) : null}
             </section>
           ) : (
-            <section className="mt-4 space-y-6">
-              {category
-                ? menuGroups(category).map((group) => (
-                    <div key={group.title ?? "all"}>
-                      <div className="mb-2 flex items-center gap-2">
-                        <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-faint">
-                          {group.title ?? category.name}
-                        </h3>
-                        <span className="h-px flex-1 bg-line" />
-                        <span className="text-[10px] text-faint">{group.items.length}</span>
+            <section className="mt-4 space-y-8">
+              {context.menu.categories.map((entry) => (
+                <div key={entry.id}>
+                  <div className="mb-2.5 flex items-center gap-2">
+                    <h2 className="text-sm font-semibold text-ink">{entry.name}</h2>
+                    <span className="h-px flex-1 bg-line" />
+                    <span className="text-xs text-faint">{entry.items.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {menuGroups(entry).map((group) => (
+                      <div key={group.title ?? "all"}>
+                        {group.title ? (
+                          <div className="mb-1.5 flex items-center gap-2 pt-1">
+                            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-faint">
+                              {group.title}
+                            </h3>
+                            <span className="h-px flex-1 bg-line" />
+                            <span className="text-xs text-faint">{group.items.length}</span>
+                          </div>
+                        ) : null}
+                        <div className="space-y-2">
+                          {group.items.map((item) => (
+                            <ItemRow key={item.id} item={item} onAdd={addVariant} />
+                          ))}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        {group.items.map((item) => (
-                          <ItemRow key={item.id} item={item} onAdd={addVariant} />
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                : null}
+                    ))}
+                  </div>
+                </div>
+              ))}
             </section>
           )}
 
@@ -471,8 +468,8 @@ function ItemRow({
       <div className="flex items-center gap-2.5">
         <VegMark isVeg={item.isVeg} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium leading-snug text-ink">{item.name}</p>
-          {item.nameLocal ? <p className="mt-0.5 truncate text-[11px] text-faint">{item.nameLocal}</p> : null}
+          <p className="font-medium leading-snug text-ink">{item.name}</p>
+          {item.nameLocal ? <p className="mt-0.5 text-[11px] text-faint">{item.nameLocal}</p> : null}
           {categoryName ? <p className="mt-0.5 text-[10px] uppercase tracking-wider text-faint">{categoryName}</p> : null}
         </div>
 

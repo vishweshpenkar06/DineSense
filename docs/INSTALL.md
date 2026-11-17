@@ -56,7 +56,7 @@ Open `https://<LAN-IP>/login`, choose **Admin password**, sign in, and follow
 4. Menu: import the CSV/XLSX (`category,item,local_name,variant,price_ground,
    price_first,veg,needs_kitchen`).
 5. Staff: create the waiter, chef and receptionist with 4–6 digit PINs.
-6. Timers/tax: the decision timer defaults to **180 seconds**; set the tax rate
+6. Timers/tax: the decision timer defaults to **120 seconds**; set the tax rate
    and mode the accountant gave you.
 7. Run the guided test (seated → alert → order → ready → served → paid) and
    finish. The test data removes itself.

@@ -70,7 +70,6 @@ export default function AdminPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const isAdmin = snapshot?.me.role === "ADMIN";
 
   const loadReport = useCallback(async (query: string) => {
     try {
@@ -185,14 +184,6 @@ export default function AdminPage() {
             Go to sign in
           </Link>
         </div>
-      </main>
-    );
-  }
-
-  if (snapshot && !isAdmin) {
-    return (
-      <main className="mx-auto flex min-h-[100dvh] max-w-md items-center justify-center px-5 text-center">
-        <p className="text-sm text-muted">This area is for the owner/admin account.</p>
       </main>
     );
   }

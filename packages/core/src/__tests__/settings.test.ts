@@ -3,8 +3,8 @@ import { DEFAULT_SETTINGS, mergeSettings } from "../settings";
 import { decryptSecret, encryptSecret, hashSecret, safeEqual, verifySecret } from "../security";
 
 describe("settings", () => {
-  it("defaults the decision window to 180 seconds", () => {
-    expect(DEFAULT_SETTINGS.DECIDE_WINDOW_S).toBe(180);
+  it("defaults the decision window to 120 seconds", () => {
+    expect(DEFAULT_SETTINGS.DECIDE_WINDOW_S).toBe(120);
     expect(DEFAULT_SETTINGS.EMPTY_CONFIRM_S).toBe(60);
     expect(DEFAULT_SETTINGS.BUSINESS_DAY_START).toBe("05:00");
     expect(DEFAULT_SETTINGS.TAX_RATE_PERCENT).toBe(0);
@@ -26,7 +26,7 @@ describe("settings", () => {
       SNOOZE_S: "abc",
       BUSINESS_DAY_START: "25:00",
     });
-    expect(settings.DECIDE_WINDOW_S).toBe(180);
+    expect(settings.DECIDE_WINDOW_S).toBe(120);
     expect(settings.SNOOZE_S).toBe(300);
     expect(settings.BUSINESS_DAY_START).toBe("05:00");
   });

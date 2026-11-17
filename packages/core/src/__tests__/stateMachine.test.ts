@@ -30,14 +30,14 @@ function run(state: TableState, event: TableEvent, overrides: Partial<TableConte
 }
 
 describe("transition: VISION_OCCUPIED", () => {
-  it("free -> occupied opens a session with a 180s deadline", () => {
+  it("free -> occupied opens a session with a 120s deadline", () => {
     const result = run("free", { type: "VISION_OCCUPIED", at: AT }, { hasOpenSession: false });
     expect(result.state).toBe("occupied");
     expect(result.changed).toBe(true);
     const open = result.effects.find((e) => e.kind === "openSession");
     expect(open).toMatchObject({ kind: "openSession" });
     if (open?.kind === "openSession") {
-      expect(open.deadlineAt?.getTime()).toBe(AT.getTime() + 180_000);
+      expect(open.deadlineAt?.getTime()).toBe(AT.getTime() + 120_000);
     }
   });
 

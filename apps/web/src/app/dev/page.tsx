@@ -521,7 +521,7 @@ export default function DevConsolePage() {
             </h2>
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-3">
               <p className="text-xs text-slate-400">
-                Jump time forward to test the 3-minute rule without waiting.
+                Jump time forward to test the 2-minute rule without waiting.
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {[60, 120, 180].map((seconds) => (

@@ -1,5 +1,21 @@
 {
 	default_sni {$SITE_ADDRESS:localhost}
+	# Keep plain HTTP available for phones that have not installed the CA yet.
+	auto_https disable_redirects
+}
+
+# Plain HTTP fallback. HTTPS stays the preferred path (and is required for PWA install).
+:80 {
+	encode gzip
+	handle /ca.crt {
+		header Content-Type application/x-x509-ca-cert
+		rewrite * /root.crt
+		root * /data/caddy/pki/authorities/local
+		file_server
+	}
+	reverse_proxy web:3000 {
+		flush_interval -1
+	}
 }
 
 # Phase 3 LAN HTTPS with Caddy's internal CA.

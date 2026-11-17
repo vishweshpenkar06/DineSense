@@ -19,7 +19,7 @@ export type Settings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  DECIDE_WINDOW_S: 180,
+  DECIDE_WINDOW_S: 120,
   SEATED_CONFIRM_S: 20,
   EMPTY_CONFIRM_S: 60,
   SNOOZE_S: 300,

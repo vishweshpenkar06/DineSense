@@ -2,6 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens — light is the default; dark is an explicit theme. */
+:root,
+[data-theme="light"] {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --surface-raised: #f4f0e8;
+  --border: #e7e0d4;
+  --text: #1c1915;
+  --muted: #6b6358;
+  --brand: #f5a524;
+  --brand-fg: #1c1915;
+  --brand-text: #b45309;
+  --overlay: rgb(28 25 21 / 0.45);
+
+  --status-free-bg: #ecfdf3;
+  --status-free-fg: #166534;
+  --status-occupied-bg: #fff7e0;
+  --status-occupied-fg: #92400e;
+  --status-needs-order-bg: #dc2626;
+  --status-needs-order-fg: #ffffff;
+  --status-ordered-bg: #eff6ff;
+  --status-ordered-fg: #1d4ed8;
+  --status-food-ready-bg: #7c3aed;
+  --status-food-ready-fg: #ffffff;
+  --status-dining-bg: #f3f4f6;
+  --status-dining-fg: #374151;
+  --status-bill-requested-bg: #ffedd5;
+  --status-bill-requested-fg: #9a3412;
+  --status-needs-cleaning-bg: #f3f4f6;
+  --status-needs-cleaning-fg: #374151;
+}
+
+[data-theme="dark"] {
+  --bg: #0f0e0c;
+  --surface: #1a1814;
+  --surface-raised: #23201a;
+  --border: #2e2822;
+  --text: #f4efe4;
+  --muted: #a79d8e;
+  --brand: #f5a524;
+  --brand-fg: #1c1915;
+  --brand-text: #f5a524;
+  --overlay: rgb(0 0 0 / 0.6);
+
+  --status-free-bg: #0f2a1c;
+  --status-free-fg: #86efac;
+  --status-occupied-bg: #2b2108;
+  --status-occupied-fg: #fcd34d;
+  --status-needs-order-bg: #dc2626;
+  --status-needs-order-fg: #ffffff;
+  --status-ordered-bg: #10203f;
+  --status-ordered-fg: #93c5fd;
+  --status-food-ready-bg: #7c3aed;
+  --status-food-ready-fg: #ffffff;
+  --status-dining-bg: #23262b;
+  --status-dining-fg: #d1d5db;
+  --status-bill-requested-bg: #2f1706;
+  --status-bill-requested-fg: #fdba74;
+  --status-needs-cleaning-bg: #23262b;
+  --status-needs-cleaning-fg: #d1d5db;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -29,8 +91,8 @@ h3 {
   color: #0b0a08;
 }
 
-:focus-visible {
-  outline: 2px solid #e5b14c;
+:where(:focus-visible) {
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -45,6 +107,31 @@ textarea {
   color-scheme: dark;
 }
 
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+
+@keyframes ui-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 select,
 input,
 button {
@@ -57,7 +144,7 @@ button {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgb(51 65 85);
+  background: var(--border);
   border-radius: 9999px;
 }
 

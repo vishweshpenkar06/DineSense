@@ -49,7 +49,7 @@ stages; the owner keeps paper as the legal backup until sign-off.
 
 Review the week with the owner and staff. Sign off only when:
 
-- [ ] No table waited past 3 minutes without a waiter being alerted.
+- [ ] No table waited past 2 minutes without a waiter being alerted.
 - [ ] The chef's board matched the paper chits every day.
 - [ ] Bills and split payments matched the cash book; tax lines are correct.
 - [ ] The pilot review shows manual corrections falling, not rising.
@@ -63,4 +63,4 @@ monthly review of the health page and camera tuning log.
 
 Only visibility and process: the app still creates alerts, orders and bills. The
 amber banner reminds staff that paper is the fallback. It does not suppress the
-3-minute timer or any kitchen/reception action.
+2-minute timer or any kitchen/reception action.

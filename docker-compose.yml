@@ -4,6 +4,7 @@ x-app-env: &app-env
   ENCRYPTION_KEY: "${ENCRYPTION_KEY:-dev-encryption-key-change-me}"
   VISION_SHARED_SECRET: "${VISION_SHARED_SECRET:-dev-vision-secret}"
   ENABLE_DEV_CONSOLE: "${ENABLE_DEV_CONSOLE:-true}"
+  DEMO_ALLOW_ALL_ROLES: "${DEMO_ALLOW_ALL_ROLES:-false}"
   COOKIE_SECURE: "${COOKIE_SECURE:-false}"
   VISION_URL: "http://vision:8100"
 
