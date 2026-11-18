@@ -74,6 +74,8 @@ html {
 
 body {
   font-variant-numeric: tabular-nums;
+  padding-top: env(safe-area-inset-top, 0px);
+  overscroll-behavior-y: none;
   background:
     radial-gradient(1200px 600px at 15% -10%, rgba(229, 177, 76, 0.06), transparent 60%),
     #0b0a08;
@@ -99,6 +101,7 @@ h3 {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 input,
@@ -119,6 +122,10 @@ textarea {
 
 .animate-pulse-soft {
   animation: pulse-soft 2s ease-in-out infinite;
+}
+
+[data-sonner-toaster] {
+  top: max(1rem, env(safe-area-inset-top)) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

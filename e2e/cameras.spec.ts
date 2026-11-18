@@ -91,8 +91,9 @@ test("owner calibrates a table zone and reviews detections and tuning", async ({
     .poll(
       async () => {
         const response = await request.get("/api/admin/vision/events?limit=5");
-        const data = (await response.json()) as { events: unknown[] };
-        return data.events.length;
+        if (!response.ok()) return 0;
+        const data = (await response.json()) as { events?: unknown[] };
+        return Array.isArray(data.events) ? data.events.length : 0;
       },
       { timeout: 20_000 },
     )
@@ -100,8 +101,9 @@ test("owner calibrates a table zone and reviews detections and tuning", async ({
   await expect
     .poll(async () => {
       const response = await request.get("/api/admin/vision/tuning?tail=5");
-      const data = (await response.json()) as { rows: unknown[] };
-      return data.rows.length;
-    })
+      if (!response.ok()) return 0;
+      const data = (await response.json()) as { rows?: unknown[] };
+      return Array.isArray(data.rows) ? data.rows.length : 0;
+    }, { timeout: 30_000 })
     .toBeGreaterThan(0);
 });

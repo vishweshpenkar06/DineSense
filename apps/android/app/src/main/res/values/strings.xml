@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">DineSense</string>
+    <string name="setup_title">DineSense</string>
+    <string name="setup_subtitle">Connect to the restaurant server</string>
+    <string name="setup_help">Use the same Wi-Fi as the mini PC, then enter its address.</string>
+    <string name="server_label">Server address</string>
+    <string name="connect">Open DineSense</string>
+    <string name="setup_note">This app needs the DineSense server on the restaurant LAN. For HTTPS, install the restaurant\'s Caddy CA first.</string>
+    <string name="shortcut_waiter">Waiter floor</string>
+    <string name="shortcut_kitchen">Kitchen board</string>
+    <string name="shortcut_reception">Reception</string>
+    <string name="shortcut_owner">Owner</string>
+    <string name="shortcut_server">Server settings</string>
+</resources>

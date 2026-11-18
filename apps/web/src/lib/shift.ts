@@ -11,6 +11,15 @@ type NavigatorWithWakeLock = Navigator & {
   wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinelLike> };
 };
 
+type NativeApp = {
+  setKeepScreenOn?: (keep: boolean) => void;
+};
+
+function setNativeKeepScreenOn(keep: boolean): void {
+  if (typeof window === "undefined") return;
+  (window as Window & { DineSenseApp?: NativeApp }).DineSenseApp?.setKeepScreenOn?.(keep);
+}
+
 export type Chime = "start" | "alert" | "new" | "cancel";
 
 export function useShift() {
@@ -23,6 +32,7 @@ export function useShift() {
     if (typeof navigator === "undefined") return;
     const nav = navigator as NavigatorWithWakeLock;
     if (!nav.wakeLock) return;
+    setNativeKeepScreenOn(true);
     try {
       lockRef.current = await nav.wakeLock.request("screen");
       setScreenAwake(true);

@@ -407,7 +407,7 @@ function OrderScreen() {
           {cart.length > 0 ? (
           <div
             aria-hidden={cartOpen}
-            className={`fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas/95 px-4 py-3 backdrop-blur ${
+            className={`fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur ${
               cartOpen ? "hidden" : ""
             }`}
           >

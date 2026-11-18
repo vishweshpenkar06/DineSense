@@ -1,6 +1,7 @@
 "use client";
 
 import { Brand, BrandMark } from "@/components/brand";
+import { InstallApp } from "@/components/install-app";
 import { getJson, postJson } from "@/lib/client";
 import { homeForRole } from "@/lib/ui";
 import { ArrowRight, ChefHat, Delete, KeyRound, Lock, Receipt, Timer, X } from "lucide-react";
@@ -215,9 +216,11 @@ export default function LoginPage() {
             </form>
           )}
 
-          <p className="mt-8 text-xs leading-relaxed text-faint">
+          <InstallApp />
+
+          <p className="mt-6 text-xs leading-relaxed text-faint">
             Staff PINs are created by the owner. Development seeds and setup instructions live in
-            the project README.
+            the project README. For phone alerts, use the secure HTTPS link.
           </p>
         </div>
       </section>

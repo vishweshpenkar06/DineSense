@@ -46,7 +46,8 @@ Then:
 2. Open `https://<LAN-IP>/login` → **Admin password** → follow `/setup`:
    restaurant profile → default floors/tables → cameras → menu import → staff PINs
    → timers/tax → guided test → finish.
-3. Install the PWA (“Add to Home Screen”) on staff devices.
+3. Install the PWA (“Add to Home Screen”) on staff devices, or sideload the signed
+   native APK from `dist/DineSense.apk` (see `docs/APK.md`).
 
 | App | URL |
 |---|---|
@@ -130,7 +131,10 @@ phase (U1–U6); until then the existing warm-ink screens remain intact.
 “Next up” task, floor board with countdowns, searchable tap-to-order menu with the
 correct AC or non-AC floor prices, Half/Full and Dry/Gravy variants, quick notes,
 sticky cart and review sheet, parcels, move table, request bill, camera
-mute/monitor, and an offline order queue (`clientKey` idempotent).
+mute/monitor, an offline order queue (`clientKey` idempotent), and pickup alerts:
+an in-app toast on every waiter screen plus an optional browser notification when the
+kitchen marks food ready. Browser notifications need the HTTPS/PWA install; sound and
+vibration still work without them.
 
 **Chef (tablet)** — New / Preparing / Ready columns, oldest first, age timers
 (amber 10 min / red 20 min), notes, By-dish aggregation, out-of-stock toggles,
@@ -211,6 +215,7 @@ CCTV cameras (RTSP) ──► vision (Python · YOLO11n · ByteTrack)
 
 ```
 apps/web          Next.js 15 App Router (all roles + API + SSE)
+apps/android      Native Android WebView shell (APK, shortcuts, pickup notifications, print)
 apps/worker       Node worker: timers, abandonment, task alerts, camera health
 packages/core     Pure TypeScript domain logic + Vitest (state machine, bills, dates…)
 packages/db       Prisma schema/migrations/seed + DB services (engine, jobs, reports…)
@@ -285,8 +290,11 @@ The redesigned menu was also verified against the source PDFs:
 21/21 tables; power-cycle timer/data persistence; HTTPS via Caddy's internal CA.
 
 **Not verified on this machine:** a blank-PC `install.sh` run (no spare Ubuntu mini
-PC), physical phones/tablets, real RTSP cameras, and paper printing. The scripts pass
-`bash -n`; these are on-site handover checks.
+PC), physical phones/tablets, real RTSP cameras, paper printing, and installing the
+APK on a physical Android device. The APK builds, its release signature verifies, and
+it was smoke-tested in an Android 15 emulator (server setup, login, WebView, native
+pickup notification and in-app toast). Physical-device checks remain handover checks.
+See `docs/APK.md`.
 
 ### Handover smoke test
 
@@ -379,6 +387,8 @@ reservations, staff recognition, loyalty and WhatsApp/SMS.
 | `docs/QUICK-RECEPTION.md` | One-page reception guide |
 | `docs/QUICK-ADMIN.md` | One-page owner guide |
 | `docs/UI-REDESIGN.md` | Multi-phase UI redesign plan, tokens and component specs |
+| `docs/APK.md` | Native APK install/build, server setup, notifications, print and TWA alternative |
+| `docs/PRODUCT-ROADMAP.md` | Sellable product, scale-up, licensing, pricing, fleet ops and 90-day plan |
 | `DineSense_Masterplan_v2.md` | Product requirements |
 
 Built incrementally in eight phases. `git log` covers the engine, vision, staff apps,

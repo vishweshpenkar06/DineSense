@@ -1,4 +1,4 @@
-const CACHE = "dinesense-shell-v1";
+const CACHE = "dinesense-shell-v2";
 const SHELL = [
   "/",
   "/login",
@@ -62,5 +62,23 @@ self.addEventListener("fetch", (event) => {
         return response;
       });
     }),
+  );
+});
+
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "/waiter", self.location.origin).href;
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        const waiter = clients.find((client) => {
+          const url = new URL(client.url);
+          return url.origin === self.location.origin && url.pathname.startsWith("/waiter");
+        });
+        if (waiter) return waiter.focus();
+        return self.clients.openWindow(target);
+      }),
   );
 });

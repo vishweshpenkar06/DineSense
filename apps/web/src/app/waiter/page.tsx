@@ -7,6 +7,11 @@ import type { SnapshotTable, SnapshotTask } from "@dinesense/core";
 import { errorMessage, postJson } from "@/lib/client";
 import { useSnapshotLive } from "@/lib/live";
 import { readPending, removePending, type PendingOrder } from "@/lib/offline-orders";
+import {
+  getNotificationState,
+  requestNotificationPermission,
+  type NotificationState,
+} from "@/lib/notifications";
 import { useShift } from "@/lib/shift";
 import {
   STATE_DOT,
@@ -17,6 +22,9 @@ import {
 } from "@/lib/ui";
 import {
   ArrowRight,
+  Bell,
+  BellOff,
+  BellRing,
   Camera,
   CheckCircle2,
   ChevronDown,
@@ -27,6 +35,7 @@ import {
   UtensilsCrossed,
   WifiOff,
 } from "lucide-react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -45,11 +54,47 @@ export default function WaiterPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingOrder[]>([]);
   const [lastZone, setLastZone] = useState<string | null>(null);
+  const [notificationState, setNotificationState] = useState<NotificationState>("default");
   const seenAlerts = useRef(new Set<string>());
 
   useEffect(() => {
     setLastZone(window.localStorage.getItem("dinesense.lastZone"));
+    setNotificationState(getNotificationState());
   }, []);
+
+  async function enableNotifications() {
+    if (notificationState === "granted") {
+      toast.success("Pickup notifications are on");
+      return;
+    }
+    if (notificationState === "insecure") {
+      toast.error("System notifications need the secure HTTPS link. Sound and vibration still work.");
+      return;
+    }
+    if (notificationState === "unsupported") {
+      toast.error("This browser cannot show pickup notifications. Sound and vibration still work.");
+      return;
+    }
+    if (notificationState === "denied") {
+      toast.error("Notifications are blocked. Allow them in your browser settings, then reload.");
+      return;
+    }
+    const next = await requestNotificationPermission();
+    setNotificationState(next);
+    if (next === "granted") {
+      toast.success("Pickup notifications enabled");
+    } else if (next === "denied") {
+      toast.error("Notifications are blocked. Sound and vibration still work.");
+    }
+  }
+
+  async function startShift() {
+    if (notificationState === "default") {
+      const next = await requestNotificationPermission();
+      setNotificationState(next);
+    }
+    await shift.start();
+  }
 
   const flushPending = useCallback(async () => {
     const queued = readPending();
@@ -247,6 +292,42 @@ export default function WaiterPage() {
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <ConnectionBadge status={stream} />
+          <button
+            type="button"
+            onClick={() => void enableNotifications()}
+            title={
+              notificationState === "granted"
+                ? "Pickup notifications are on"
+                : notificationState === "denied"
+                  ? "Notifications are blocked in browser settings"
+                  : notificationState === "insecure" || notificationState === "unsupported"
+                    ? "System notifications need HTTPS"
+                    : "Enable pickup notifications"
+            }
+            aria-label={
+              notificationState === "granted"
+                ? "Pickup notifications are on"
+                : "Enable pickup notifications"
+            }
+            className={`flex h-9 w-9 items-center justify-center rounded-xl border bg-surface transition sm:w-auto sm:gap-1.5 sm:px-3 ${
+              notificationState === "granted"
+                ? "border-jade/30 text-jade"
+                : "border-line text-muted hover:text-ink"
+            }`}
+          >
+            {notificationState === "granted" ? (
+              <BellRing className="h-4 w-4" />
+            ) : notificationState === "denied" ||
+              notificationState === "insecure" ||
+              notificationState === "unsupported" ? (
+              <BellOff className="h-4 w-4" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+            <span className="hidden text-sm sm:inline">
+              {notificationState === "granted" ? "Alerts on" : "Alerts"}
+            </span>
+          </button>
           <Link
             href="/waiter/cameras"
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface text-muted transition hover:text-ink sm:w-auto sm:gap-1.5 sm:px-3"
@@ -266,7 +347,7 @@ export default function WaiterPage() {
       </header>
 
       <div className="mt-5">
-        <ShiftBar unlocked={shift.unlocked} screenAwake={shift.screenAwake} onStart={() => void shift.start()} />
+        <ShiftBar unlocked={shift.unlocked} screenAwake={shift.screenAwake} onStart={() => void startShift()} />
       </div>
 
       {snapshot.settings.SHADOW_MODE ? (

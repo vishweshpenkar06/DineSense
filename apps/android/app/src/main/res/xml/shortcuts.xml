@@ -1,0 +1,62 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="waiter"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_waiter">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dinesense.app.MainActivity"
+            android:targetPackage="com.dinesense.app">
+            <extra android:name="dinesense_path" android:value="/waiter" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="kitchen"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_kitchen">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dinesense.app.MainActivity"
+            android:targetPackage="com.dinesense.app">
+            <extra android:name="dinesense_path" android:value="/chef" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="reception"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_reception">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dinesense.app.MainActivity"
+            android:targetPackage="com.dinesense.app">
+            <extra android:name="dinesense_path" android:value="/reception" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="owner"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_owner">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dinesense.app.MainActivity"
+            android:targetPackage="com.dinesense.app">
+            <extra android:name="dinesense_path" android:value="/admin" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="server"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_server">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dinesense.app.MainActivity"
+            android:targetPackage="com.dinesense.app">
+            <extra android:name="show_server_setup" android:value="true" />
+        </intent>
+    </shortcut>
+</shortcuts>

@@ -63,7 +63,7 @@ export async function refreshVision(): Promise<boolean> {
 }
 
 export async function fetchTuning(tail: number): Promise<TuningResponseDto> {
-  const response = await visionFetch(`/tuning?tail=${tail}`, {}, 5000);
+  const response = await visionFetch(`/tuning?tail=${tail}`, {}, 10_000);
   if (!response.ok) throw new Error(`Tuning log returned ${response.status}`);
   return (await response.json()) as TuningResponseDto;
 }

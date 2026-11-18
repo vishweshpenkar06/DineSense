@@ -35,6 +35,7 @@ test("waiter → chef → waiter → bill across two devices", async ({ browser,
   await ticket.getByRole("button", { name: "Ready" }).click();
   await expect(ticket.getByText("Waiting for pickup")).toBeVisible();
 
+  await expect(waiter.getByText("Food ready for pickup")).toBeVisible({ timeout: 20_000 });
   await expect(waiter.getByText(/food is ready/i)).toBeVisible({ timeout: 20_000 });
   await waiter.getByRole("button", { name: "Mark served" }).click();
   await expect(
