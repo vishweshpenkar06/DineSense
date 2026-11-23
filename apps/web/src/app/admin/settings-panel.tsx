@@ -2,6 +2,7 @@
 
 import type { AdminSettingsDto } from "@dinesense/core";
 import { apiFetch } from "@/lib/client";
+import { useState } from "react";
 import { BTN_PRIMARY, CARD, INPUT, type Run } from "./ui";
 
 export function SettingsPanel({
@@ -15,6 +16,19 @@ export function SettingsPanel({
   run: Run;
   onChanged: () => Promise<void>;
 }) {
+  const [qr, setQr] = useState(data.restaurant.upiQrUrl ?? "");
+
+  async function readQrFile(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 500_000) {
+      window.alert("Please choose a QR image under 500 KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setQr(typeof reader.result === "string" ? reader.result : "");
+    reader.readAsDataURL(file);
+  }
+
   return (
     <div className="space-y-4">
       <form
@@ -34,6 +48,7 @@ export function SettingsPanel({
             "TICKET_AMBER_S",
             "TICKET_RED_S",
             "TAX_RATE_PERCENT",
+            "SERVICE_CHARGE_PERCENT",
           ]) {
             settings[key] = Number(form.get(key) ?? 0);
           }
@@ -63,7 +78,8 @@ export function SettingsPanel({
             ["VISION_MUTE_S", "Vision mute (s)"],
             ["TICKET_AMBER_S", "Ticket amber (s)"],
             ["TICKET_RED_S", "Ticket red (s)"],
-            ["TAX_RATE_PERCENT", "Tax rate (%)"],
+            ["TAX_RATE_PERCENT", "Default GST rate (%)"],
+            ["SERVICE_CHARGE_PERCENT", "Service charge (%)"],
           ].map(([key, label]) => (
             <label key={key} className="text-xs text-slate-400">
               {label}
@@ -123,6 +139,10 @@ export function SettingsPanel({
                 address: String(form.get("address") ?? ""),
                 phone: String(form.get("phone") ?? "") || null,
                 gstin: String(form.get("gstin") ?? "") || null,
+                fssai: String(form.get("fssai") ?? "") || null,
+                upiId: String(form.get("upiId") ?? "") || null,
+                upiName: String(form.get("upiName") ?? "") || null,
+                upiQrUrl: qr || null,
                 billFooter: String(form.get("billFooter") ?? "") || null,
               }),
             });
@@ -149,6 +169,52 @@ export function SettingsPanel({
             <input name="gstin" defaultValue={data.restaurant.gstin ?? ""} className={`${INPUT} mt-1`} />
           </label>
           <label className="text-xs text-slate-400">
+            FSSAI licence
+            <input name="fssai" defaultValue={data.restaurant.fssai ?? ""} className={`${INPUT} mt-1`} />
+          </label>
+          <label className="text-xs text-slate-400">
+            Shop UPI ID
+            <input
+              name="upiId"
+              defaultValue={data.restaurant.upiId ?? ""}
+              placeholder="shop@upi"
+              className={`${INPUT} mt-1`}
+            />
+          </label>
+          <label className="text-xs text-slate-400">
+            UPI payee name
+            <input
+              name="upiName"
+              defaultValue={data.restaurant.upiName ?? ""}
+              placeholder="Restaurant name"
+              className={`${INPUT} mt-1`}
+            />
+          </label>
+          <label className="text-xs text-slate-400 sm:col-span-2">
+            Shop UPI QR image (optional; used instead of generating from UPI ID)
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => void readQrFile(event.target.files?.[0])}
+              className="mt-1 block w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-raised file:px-3 file:py-2 file:text-xs file:text-ink"
+            />
+            <input
+              value={qr.startsWith("data:") ? "" : qr}
+              onChange={(event) => setQr(event.target.value)}
+              placeholder="…or paste a hosted QR image URL"
+              className={`${INPUT} mt-2`}
+            />
+            {qr ? (
+              <span className="mt-2 flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qr} alt="Shop UPI QR preview" className="h-16 w-16 rounded-lg bg-white object-contain p-1" />
+                <button type="button" className="text-[11px] text-coral" onClick={() => setQr("")}>
+                  Remove QR
+                </button>
+              </span>
+            ) : null}
+          </label>
+          <label className="text-xs text-slate-400 sm:col-span-2">
             Bill footer
             <input
               name="billFooter"

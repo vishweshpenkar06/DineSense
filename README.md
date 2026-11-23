@@ -5,17 +5,19 @@ One mini PC runs the whole system on the venue LAN: camera table detection, the
 2-minute “nobody took the order” alert, waiter/chef apps, reception billing and an
 owner dashboard. No internet or cloud account is required during service.
 
-**Status: v1 complete (Phases 1–8), UI-refreshed and menu-loaded.** Engine, vision,
-waiter/chef PWAs, reception/billing, admin, camera calibration, setup wizard,
-installer/backups/health and pilot tooling are built and verified. The production UI
-has been refreshed end-to-end, and the real 120-item AC/non-AC dine-in card is
-imported. The remaining work is on-site: hardware, real-camera placement, staff
-devices and the pilot.
+**Status: v1 complete (Phases 1–8), UI-refreshed, menu-loaded, GST/UPI/day-close
+slice added.** Engine, vision, waiter/chef PWAs, reception/billing, admin, camera
+calibration, setup wizard, installer/backups/health and pilot tooling are built and
+verified. The production UI has been refreshed end-to-end, the real 120-item
+AC/non-AC dine-in card is imported, and billing now supports per-item GST, service
+charge, FSSAI/UPI QR and daily cash close. The remaining work is the approved larger
+roadmap (inventory/loyalty, U1–U7 UI migration, printer/phone hardening and the
+on-site pilot).
 
 | Test | Result |
 |---|---|
-| Core domain (`npm run test:core`) | **119/119** |
-| DB/API acceptance (`npm run acceptance`) | **119/119** |
+| Core domain (`npm run test:core`) | **121/121** |
+| DB/API acceptance (`npm run acceptance`) | **122/122** |
 | Vision service (`pytest`) | **36/36** |
 | End-to-end Playwright (`npm run test:e2e`) | **9/9** |
 | Typecheck | clean |
@@ -141,14 +143,17 @@ vibration still work without them.
 new/cancelled chimes and wake lock.
 
 **Receptionist (desktop)** — open visits with running totals and escalation flags,
-bill with extras/discounts/item voids, automatic tax and round-off, split
-cash/UPI/card payments, 80 mm/A4 print layouts, void and admin reopen with audit.
+bill with extras/discounts/item voids, automatic GST (per-item rates, CGST/SGST
+breakup, service charge, round-off), split cash/UPI/card payments, a generated
+UPI QR (or the owner's uploaded shop QR), FSSAI and HSN on the bill, 80 mm/A4 print
+layouts, and void/admin reopen with audit.
 
 **Owner/admin** — sidebar console with dashboard presets (earnings, bills, average,
 orders/items, top/bottom dishes, floor/hour/payment splits, operations), CSV export,
 menu manager with CSV/XLSX import preview, per-floor variant prices and an archived
-menu filter, floors/tables, staff credentials, timers/tax/business day, restaurant
-profile, cameras/calibration, health and diagnostics, pilot review.
+menu filter, floors/tables, staff credentials, timers/tax/service charge/business day,
+restaurant profile (GSTIN/FSSAI/UPI QR), daily cash close with variance, a GST
+breakup report, cameras/calibration, health and diagnostics, pilot review.
 
 **The core rule** — a table becomes `occupied` when the camera confirms a seated
 party; a 120-second deadline is stored in Postgres; if no order exists when it
@@ -347,7 +352,10 @@ See `docs/APK.md`.
 
 - Timer **120 s**; timestamps UTC displayed in `Asia/Kolkata`; money integer paise.
 - Business day starts **05:00** IST (configurable); bills/numbers/reports follow it.
-- Tax defaults to **0/exclusive**; the owner sets rate/mode in Admin → Settings.
+- Tax defaults to **0/exclusive**; the owner sets the default rate and mode in Admin →
+  Settings, and can override GST/HSN per category or dish. Service charge defaults to
+  **0%**; UPI QR is generated from the shop UPI ID, or the owner can upload a shop QR
+  image. Cash close is recorded per business day with counted-cash variance.
 - Bill numbers allocate on first open, format `DS-<year>-<6 digits>`, never reused.
 - A camera “empty” event is debounced by the vision service; the app adds
   `EMPTY_CONFIRM_S` before abandoning an unordered visit (safe bias, ~120 s total).

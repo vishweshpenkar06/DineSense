@@ -10,6 +10,7 @@ import {
   type ReportPaymentDto,
   type ReportPreset,
   type ReportSummaryDto,
+  type ReportTaxLineDto,
 } from "@dinesense/core";
 import { prisma } from "./client";
 import { loadSettings } from "./settings";
@@ -79,6 +80,29 @@ export async function getReportSummary(query: ReportQuery): Promise<ReportSummar
   ]);
 
   const earningsPaise = bills.reduce((sum, bill) => sum + bill.total, 0);
+  const taxPaise = bills.reduce((sum, bill) => sum + bill.cgst + bill.sgst, 0);
+  const serviceChargePaise = bills.reduce((sum, bill) => sum + bill.serviceCharge, 0);
+  const discountPaise = bills.reduce((sum, bill) => sum + bill.discount, 0);
+  const taxRows = new Map<number, ReportTaxLineDto>();
+  for (const bill of bills) {
+    const stored = Array.isArray(bill.taxBreakup) ? bill.taxBreakup : null;
+    if (stored && stored.length > 0) {
+      for (const raw of stored) {
+        const line = raw as Partial<ReportTaxLineDto>;
+        const rate = Number(line.ratePercent ?? 0);
+        const row = taxRows.get(rate) ?? { ratePercent: rate, taxablePaise: 0, taxPaise: 0 };
+        row.taxablePaise += Number(line.taxablePaise ?? 0);
+        row.taxPaise += Number(line.taxPaise ?? 0);
+        taxRows.set(rate, row);
+      }
+    } else {
+      const rate = bill.taxRatePercent;
+      const row = taxRows.get(rate) ?? { ratePercent: rate, taxablePaise: 0, taxPaise: 0 };
+      row.taxablePaise += bill.taxableAmount;
+      row.taxPaise += bill.cgst + bill.sgst;
+      taxRows.set(rate, row);
+    }
+  }
 
   const dishes = new Map<string, ReportDishDto>();
   let itemsCount = 0;
@@ -160,6 +184,10 @@ export async function getReportSummary(query: ReportQuery): Promise<ReportSummar
     rangeStart: range.startUtc.toISOString(),
     rangeEnd: range.endUtc.toISOString(),
     earningsPaise,
+    taxPaise,
+    serviceChargePaise,
+    discountPaise,
+    taxByRate: [...taxRows.values()].sort((a, b) => a.ratePercent - b.ratePercent),
     billsCount: bills.length,
     averageBillPaise: bills.length > 0 ? Math.round(earningsPaise / bills.length) : 0,
     ordersCount: orders.length,
@@ -202,6 +230,7 @@ export async function getReportCsv(query: ReportQuery): Promise<{ filename: stri
     "is_ac",
     "item",
     "variant",
+    "hsn_code",
     "qty",
     "unit_price_paise",
     "line_total_paise",
@@ -228,7 +257,7 @@ export async function getReportCsv(query: ReportQuery): Promise<{ filename: stri
       .filter((order) => order.status !== "CANCELLED")
       .flatMap((order) => order.items.filter((item) => !item.cancelled));
     if (items.length === 0) {
-      rows.push([...base, "", "", "", "", "", bill.subtotal, bill.cgst + bill.sgst, bill.total, paymentSummary]);
+      rows.push([...base, "", "", "", "", "", "", bill.subtotal, bill.cgst + bill.sgst, bill.total, paymentSummary]);
       continue;
     }
     for (const item of items) {
@@ -236,6 +265,7 @@ export async function getReportCsv(query: ReportQuery): Promise<{ filename: stri
         ...base,
         item.nameSnapshot,
         item.variantSnapshot,
+        item.hsnCode ?? "",
         item.qty,
         item.unitPricePaise,
         item.qty * item.unitPricePaise,

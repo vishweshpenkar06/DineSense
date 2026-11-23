@@ -148,6 +148,7 @@ export function MenuPanel({
                 await postJson("/api/admin/menu", {
                   entity: "category",
                   name: String(form.get("name") ?? ""),
+                  taxRatePercent: form.get("taxRatePercent") ? Number(form.get("taxRatePercent")) : null,
                 });
                 await onChanged();
               });
@@ -168,6 +169,14 @@ export function MenuPanel({
             </div>
             <div className="mt-2 flex gap-2">
               <input name="name" placeholder="New category" className={INPUT} required />
+              <input
+                name="taxRatePercent"
+                type="number"
+                min={0}
+                max={100}
+                placeholder="GST %"
+                className={`${INPUT} !w-24`}
+              />
               <button type="submit" className={BTN} disabled={busy}>
                 Add
               </button>
@@ -197,6 +206,7 @@ export function MenuPanel({
                         entity: "category",
                         id: category.id,
                         name: String(form.get("name") ?? ""),
+                        taxRatePercent: form.get("taxRatePercent") ? Number(form.get("taxRatePercent")) : null,
                       }),
                     });
                     await onChanged();
@@ -204,6 +214,15 @@ export function MenuPanel({
                 }}
               >
                 <input name="name" defaultValue={category.name} className={INPUT} />
+                <input
+                  name="taxRatePercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="GST %"
+                  defaultValue={category.taxRatePercent ?? ""}
+                  className={`${INPUT} !w-24`}
+                />
                 <button type="submit" className={BTN} disabled={busy}>
                   Save
                 </button>
@@ -274,6 +293,8 @@ export function MenuPanel({
                       categoryId: category.id,
                       name: String(form.get("name") ?? ""),
                       isVeg: form.get("isVeg") === "on",
+                      taxRatePercent: form.get("taxRatePercent") ? Number(form.get("taxRatePercent")) : null,
+                      hsnCode: String(form.get("hsnCode") ?? "") || null,
                       needsKitchen: form.get("needsKitchen") === "on",
                     });
                     await onChanged();
@@ -282,6 +303,17 @@ export function MenuPanel({
                 }}
               >
                 <input name="name" placeholder="New item" className={INPUT} required />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    name="taxRatePercent"
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="GST %"
+                    className={INPUT}
+                  />
+                  <input name="hsnCode" placeholder="HSN code" className={INPUT} />
+                </div>
                 <label className="flex items-center gap-2 text-xs text-slate-400">
                   <input name="isVeg" type="checkbox" defaultChecked /> Veg
                 </label>
@@ -353,6 +385,8 @@ function ItemEditor({
                 name: String(form.get("name") ?? ""),
                 nameLocal: String(form.get("nameLocal") ?? "") || null,
                 isVeg: form.get("isVeg") === "on",
+                taxRatePercent: form.get("taxRatePercent") ? Number(form.get("taxRatePercent")) : null,
+                hsnCode: String(form.get("hsnCode") ?? "") || null,
                 needsKitchen: form.get("needsKitchen") === "on",
                 available: form.get("available") === "on",
                 active: form.get("active") === "on",
@@ -390,6 +424,22 @@ function ItemEditor({
           <label className="text-xs text-slate-400">
             Local name
             <input name="nameLocal" defaultValue={item.nameLocal ?? ""} className={`${INPUT} mt-1`} />
+          </label>
+          <label className="text-xs text-slate-400">
+            GST rate (%)
+            <input
+              name="taxRatePercent"
+              type="number"
+              min={0}
+              max={100}
+              defaultValue={item.taxRatePercent ?? ""}
+              placeholder="Use default"
+              className={`${INPUT} mt-1`}
+            />
+          </label>
+          <label className="text-xs text-slate-400">
+            HSN code
+            <input name="hsnCode" defaultValue={item.hsnCode ?? ""} className={`${INPUT} mt-1`} />
           </label>
         </div>
         <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-400">

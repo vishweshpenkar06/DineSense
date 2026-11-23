@@ -86,7 +86,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     const variants = await tx.menuVariant.findMany({
       where: { id: { in: variantIds } },
       include: {
-        item: true,
+        item: { include: { category: true } },
         prices: { where: { zoneId } },
       },
     });
@@ -111,6 +111,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         variantSnapshot: variant.label,
         qty: item.qty,
         unitPricePaise: price.pricePaise,
+        taxRatePercent:
+          variant.item.taxRatePercent ?? variant.item.category.taxRatePercent ?? Math.round(settings.TAX_RATE_PERCENT),
+        hsnCode: variant.item.hsnCode,
         note: item.note?.trim() || null,
       };
     });

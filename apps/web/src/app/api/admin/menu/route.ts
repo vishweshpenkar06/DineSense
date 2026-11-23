@@ -23,6 +23,7 @@ const createSchema = z.discriminatedUnion("entity", [
   z.object({
     entity: z.literal("category"),
     name: z.string().min(1).max(80),
+    taxRatePercent: z.number().int().min(0).max(100).nullable().optional(),
     sort: z.number().int().optional(),
   }),
   z.object({
@@ -31,6 +32,8 @@ const createSchema = z.discriminatedUnion("entity", [
     name: z.string().min(1).max(120),
     nameLocal: z.string().max(120).nullable().optional(),
     isVeg: z.boolean().optional(),
+    taxRatePercent: z.number().int().min(0).max(100).nullable().optional(),
+    hsnCode: z.string().max(20).nullable().optional(),
     needsKitchen: z.boolean().optional(),
     available: z.boolean().optional(),
     sort: z.number().int().optional(),
@@ -47,6 +50,7 @@ const updateSchema = z.discriminatedUnion("entity", [
     entity: z.literal("category"),
     id: uuidSchema,
     name: z.string().min(1).max(80).optional(),
+    taxRatePercent: z.number().int().min(0).max(100).nullable().optional(),
     sort: z.number().int().optional(),
   }),
   z.object({
@@ -55,6 +59,8 @@ const updateSchema = z.discriminatedUnion("entity", [
     name: z.string().min(1).max(120).optional(),
     nameLocal: z.string().max(120).nullable().optional(),
     isVeg: z.boolean().optional(),
+    taxRatePercent: z.number().int().min(0).max(100).nullable().optional(),
+    hsnCode: z.string().max(20).nullable().optional(),
     needsKitchen: z.boolean().optional(),
     available: z.boolean().optional(),
     active: z.boolean().optional(),

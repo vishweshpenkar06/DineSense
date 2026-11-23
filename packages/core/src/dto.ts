@@ -204,6 +204,8 @@ export type BillLineDto = {
   qty: number;
   unitPricePaise: number;
   lineTotalPaise: number;
+  taxRatePercent: number | null;
+  hsnCode: string | null;
   note: string | null;
   orderStatus: "PLACED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
 };
@@ -262,6 +264,10 @@ export type BillViewDto = {
     address: string;
     phone: string | null;
     gstin: string | null;
+    fssai: string | null;
+    upiId: string | null;
+    upiName: string | null;
+    upiQrUrl: string | null;
     billFooter: string | null;
   };
 };
@@ -301,6 +307,8 @@ export type AdminItemDto = {
   nameLocal: string | null;
   isVeg: boolean;
   needsKitchen: boolean;
+  taxRatePercent: number | null;
+  hsnCode: string | null;
   available: boolean;
   active: boolean;
   sort: number;
@@ -310,6 +318,7 @@ export type AdminItemDto = {
 export type AdminCategoryDto = {
   id: string;
   name: string;
+  taxRatePercent: number | null;
   sort: number;
   items: AdminItemDto[];
 };
@@ -360,6 +369,10 @@ export type AdminSettingsDto = {
     address: string;
     phone: string | null;
     gstin: string | null;
+    fssai: string | null;
+    upiId: string | null;
+    upiName: string | null;
+    upiQrUrl: string | null;
     billFooter: string | null;
   };
 };
@@ -390,12 +403,22 @@ export type ReportPaymentDto = {
   count: number;
 };
 
+export type ReportTaxLineDto = {
+  ratePercent: number;
+  taxablePaise: number;
+  taxPaise: number;
+};
+
 export type ReportSummaryDto = {
   from: string;
   to: string;
   rangeStart: string;
   rangeEnd: string;
   earningsPaise: number;
+  taxPaise: number;
+  serviceChargePaise: number;
+  discountPaise: number;
+  taxByRate: ReportTaxLineDto[];
   billsCount: number;
   averageBillPaise: number;
   ordersCount: number;
@@ -496,4 +519,16 @@ export type PilotReviewDto = {
   tables: PilotTableRowDto[];
   overrides: PilotOverrideDto[];
   notes: string;
+};
+
+export type DayCloseDto = {
+  businessDay: string;
+  expectedCashPaise: number;
+  expectedUpiPaise: number;
+  expectedCardPaise: number;
+  countedCashPaise: number;
+  variancePaise: number;
+  note: string | null;
+  closedAt: string | null;
+  closedById: string | null;
 };

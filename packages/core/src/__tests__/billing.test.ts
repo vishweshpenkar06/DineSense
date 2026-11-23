@@ -111,6 +111,48 @@ describe("calculateBill", () => {
     expect(totals.discountPaise).toBe(9000);
   });
 
+
+  it("breaks tax out by item rate and taxes service charge at the default rate", () => {
+    const totals = calculateBill({
+      items: [
+        { qty: 1, unitPricePaise: 10000, taxRatePercent: 5 },
+        { qty: 1, unitPricePaise: 5000, taxRatePercent: 12 },
+      ],
+      serviceChargePercent: 10,
+      taxRatePercent: 5,
+    });
+    expect(totals.subtotalPaise).toBe(15000);
+    expect(totals.serviceChargePaise).toBe(1500);
+    expect(totals.taxableAmountPaise).toBe(16500);
+    expect(totals.taxPaise).toBe(1175);
+    expect(totals.taxBreakup).toEqual([
+      { ratePercent: 5, taxablePaise: 11500, taxPaise: 575, cgstPaise: 287, sgstPaise: 288 },
+      { ratePercent: 12, taxablePaise: 5000, taxPaise: 600, cgstPaise: 300, sgstPaise: 300 },
+    ]);
+    expect(totals.totalPaise).toBe(17700);
+    expect(totals.roundOffPaise).toBe(25);
+  });
+
+  it("allocates a discount across mixed-rate groups before tax", () => {
+    const totals = calculateBill({
+      items: [
+        { qty: 1, unitPricePaise: 10000, taxRatePercent: 5 },
+        { qty: 1, unitPricePaise: 10000, taxRatePercent: 12 },
+      ],
+      discountPaise: 2000,
+      taxRatePercent: 5,
+    });
+    expect(totals.discountPaise).toBe(2000);
+    expect(totals.taxableAmountPaise).toBe(18000);
+    expect(totals.taxPaise).toBe(450 + 1080);
+    expect(totals.taxBreakup?.map((line) => [line.ratePercent, line.taxablePaise])).toEqual([
+      [5, 9000],
+      [12, 9000],
+    ]);
+    expect(totals.totalPaise).toBe(19500);
+    expect(totals.roundOffPaise).toBe(-30);
+  });
+
   it("zero tax by default", () => {
     const totals = calculateBill({ items: [{ qty: 3, unitPricePaise: 7000 }] });
     expect(totals.taxPaise).toBe(0);

@@ -14,7 +14,7 @@ The server still runs on the mini PC; the APK is not a copy of the database.
 ```text
 dist/DineSense.apk
 package: com.dinesense.app
-version: 1.0.0 (1)
+version: 1.1.0 (2)
 minSdk: 26 (Android 8)
 targetSdk: 35
 signing: release keystore on this machine

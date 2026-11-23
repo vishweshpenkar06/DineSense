@@ -122,6 +122,10 @@ model RestaurantProfile {
   address     String
   phone       String?
   gstin       String?
+  fssai       String?
+  upiId       String?
+  upiName     String?
+  upiQrUrl    String?
   billFooter  String?
   logoUrl     String?
   createdAt   DateTime @default(now())
@@ -186,9 +190,10 @@ model Camera {
 }
 
 model Category {
-  id        String   @id @default(uuid())
-  name      String
-  sort      Int      @default(0)
+  id              String   @id @default(uuid())
+  name            String
+  taxRatePercent  Int?
+  sort            Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -200,8 +205,10 @@ model MenuItem {
   categoryId    String
   name          String
   nameLocal     String?
-  isVeg         Boolean  @default(false)
-  needsKitchen  Boolean  @default(true)
+  isVeg           Boolean  @default(false)
+  taxRatePercent  Int?
+  hsnCode         String?
+  needsKitchen    Boolean  @default(true)
   available     Boolean  @default(true)
   active        Boolean  @default(true)
   sort          Int      @default(0)
@@ -301,6 +308,8 @@ model OrderItem {
   variantSnapshot  String
   qty              Int
   unitPricePaise   Int
+  taxRatePercent   Int?
+  hsnCode          String?
   note             String?
   cancelled        Boolean @default(false)
   cancelReason     String?
@@ -324,7 +333,9 @@ model Bill {
   sgst          Int        @default(0)
   roundOff      Int        @default(0)
   total         Int        @default(0)
+  serviceCharge Int        @default(0)
   taxRatePercent Int       @default(0)
+  taxBreakup    Json?
   taxInclusive  Boolean    @default(false)
   status        BillStatus @default(OPEN)
   finalizedById String?
@@ -342,6 +353,19 @@ model BillCounter {
   year      Int      @id
   value     Int      @default(0)
   updatedAt DateTime @updatedAt
+}
+
+model DayClose {
+  id                String   @id @default(uuid())
+  businessDay       DateTime @unique
+  expectedCashPaise Int      @default(0)
+  expectedUpiPaise  Int      @default(0)
+  expectedCardPaise Int      @default(0)
+  countedCashPaise  Int      @default(0)
+  variancePaise     Int      @default(0)
+  note              String?
+  closedById        String?
+  createdAt         DateTime @default(now())
 }
 
 model BillAdjustment {

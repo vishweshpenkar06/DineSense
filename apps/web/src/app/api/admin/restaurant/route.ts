@@ -12,6 +12,10 @@ const bodySchema = z.object({
   address: z.string().min(1).max(300),
   phone: z.string().max(40).nullable().optional(),
   gstin: z.string().max(40).nullable().optional(),
+  fssai: z.string().max(40).nullable().optional(),
+  upiId: z.string().max(120).nullable().optional(),
+  upiName: z.string().max(120).nullable().optional(),
+  upiQrUrl: z.string().max(800_000).nullable().optional(),
   billFooter: z.string().max(160).nullable().optional(),
 });
 

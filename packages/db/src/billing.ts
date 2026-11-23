@@ -59,6 +59,8 @@ function linesFromOrders(orders: OrderRow[]): BillLineDto[] {
         qty: item.qty,
         unitPricePaise: item.unitPricePaise,
         lineTotalPaise: item.qty * item.unitPricePaise,
+        taxRatePercent: item.taxRatePercent,
+        hsnCode: item.hsnCode,
         note: item.note,
         orderStatus: order.status,
       })),
@@ -87,12 +89,17 @@ function totalsFor(
     );
 
   return calculateBill({
-    items: items.map((item) => ({ qty: item.qty, unitPricePaise: item.unitPricePaise })),
+    items: items.map((item) => ({
+      qty: item.qty,
+      unitPricePaise: item.unitPricePaise,
+      taxRatePercent: item.taxRatePercent,
+    })),
     extrasPaise,
     discountPaise,
     surchargeType: zone.surchargeType as SurchargeType,
     surchargeValue: zone.surchargeValue,
     taxRatePercent: settings.TAX_RATE_PERCENT,
+    serviceChargePercent: settings.SERVICE_CHARGE_PERCENT,
     taxInclusive: settings.TAX_MODE === "inclusive",
   });
 }
@@ -107,6 +114,8 @@ function totalsFromBill(bill: {
   sgst: number;
   roundOff: number;
   total: number;
+  serviceCharge?: number;
+  taxBreakup?: unknown;
 }): BillTotals {
   return {
     subtotalPaise: bill.subtotal,
@@ -119,6 +128,8 @@ function totalsFromBill(bill: {
     sgstPaise: bill.sgst,
     roundOffPaise: bill.roundOff,
     totalPaise: bill.total,
+    serviceChargePaise: bill.serviceCharge ?? 0,
+    taxBreakup: Array.isArray(bill.taxBreakup) ? (bill.taxBreakup as BillTotals["taxBreakup"]) : undefined,
   };
 }
 
@@ -186,7 +197,9 @@ async function persistBill(
       sgst: totals.sgstPaise,
       roundOff: totals.roundOffPaise,
       total: totals.totalPaise,
+      serviceCharge: totals.serviceChargePaise ?? 0,
       taxRatePercent: settings.TAX_RATE_PERCENT,
+      taxBreakup: totals.taxBreakup ? (totals.taxBreakup as unknown as Prisma.InputJsonValue) : undefined,
       taxInclusive: settings.TAX_MODE === "inclusive",
     },
   });
@@ -228,6 +241,7 @@ async function ensureBillTx(
   settings: Settings,
   now: Date,
 ): Promise<Prisma.BillGetPayload<Record<string, never>>> {
+  await tx.$queryRaw`SELECT id FROM "Session" WHERE id = ${session.id} FOR UPDATE`;
   const existing = await tx.bill.findUnique({ where: { sessionId: session.id } });
   if (existing) return existing;
   if (session.closedAt) throw new ConflictError("Visit is closed and has no bill");
@@ -379,6 +393,10 @@ export async function getBillView(
         address: restaurant?.address ?? "",
         phone: restaurant?.phone ?? null,
         gstin: restaurant?.gstin ?? null,
+        fssai: restaurant?.fssai ?? null,
+        upiId: restaurant?.upiId ?? null,
+        upiName: restaurant?.upiName ?? null,
+        upiQrUrl: restaurant?.upiQrUrl ?? null,
         billFooter: restaurant?.billFooter ?? null,
       },
     };

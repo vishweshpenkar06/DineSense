@@ -82,6 +82,7 @@ export async function getAdminMenu(): Promise<AdminMenuDto> {
     categories: categories.map((category): AdminCategoryDto => ({
       id: category.id,
       name: category.name,
+      taxRatePercent: category.taxRatePercent,
       sort: category.sort,
       items: category.items.map((item): AdminItemDto => ({
         id: item.id,
@@ -89,6 +90,8 @@ export async function getAdminMenu(): Promise<AdminMenuDto> {
         name: item.name,
         nameLocal: item.nameLocal,
         isVeg: item.isVeg,
+        taxRatePercent: item.taxRatePercent,
+        hsnCode: item.hsnCode,
         needsKitchen: item.needsKitchen,
         available: item.available,
         active: item.active,
@@ -109,6 +112,7 @@ export async function getAdminMenu(): Promise<AdminMenuDto> {
 
 export async function createCategory(input: {
   name: string;
+  taxRatePercent?: number | null;
   sort?: number;
   actorId?: string | null;
 }): Promise<{ id: string }> {
@@ -116,7 +120,7 @@ export async function createCategory(input: {
   const created = await prisma.$transaction(async (tx) => {
     const count = await tx.category.count();
     const category = await tx.category.create({
-      data: { name, sort: input.sort ?? count },
+      data: { name, taxRatePercent: input.taxRatePercent ?? null, sort: input.sort ?? count },
     });
     await audit(tx, input.actorId, "menu.category_created", "category", category.id, { name });
     return category;
@@ -128,6 +132,7 @@ export async function createCategory(input: {
 export async function updateCategory(input: {
   id: string;
   name?: string;
+  taxRatePercent?: number | null;
   sort?: number;
   actorId?: string | null;
 }): Promise<void> {
@@ -137,7 +142,7 @@ export async function updateCategory(input: {
   await prisma.$transaction(async (tx) => {
     await tx.category.update({
       where: { id: input.id },
-      data: { name, sort: input.sort },
+      data: { name, taxRatePercent: input.taxRatePercent, sort: input.sort },
     });
     await audit(tx, input.actorId, "menu.category_updated", "category", input.id, {
       name,
@@ -173,6 +178,8 @@ export async function createItem(input: {
   name: string;
   nameLocal?: string | null;
   isVeg?: boolean;
+  taxRatePercent?: number | null;
+  hsnCode?: string | null;
   needsKitchen?: boolean;
   available?: boolean;
   sort?: number;
@@ -189,6 +196,8 @@ export async function createItem(input: {
         name,
         nameLocal: input.nameLocal?.trim() || null,
         isVeg: input.isVeg ?? true,
+        taxRatePercent: input.taxRatePercent ?? null,
+        hsnCode: input.hsnCode?.trim() || null,
         needsKitchen: input.needsKitchen ?? true,
         available: input.available ?? true,
         sort: input.sort ?? count,
@@ -206,6 +215,8 @@ export async function updateItem(input: {
   name?: string;
   nameLocal?: string | null;
   isVeg?: boolean;
+  taxRatePercent?: number | null;
+  hsnCode?: string | null;
   needsKitchen?: boolean;
   available?: boolean;
   active?: boolean;
@@ -222,6 +233,8 @@ export async function updateItem(input: {
         name,
         nameLocal: input.nameLocal !== undefined ? input.nameLocal?.trim() || null : undefined,
         isVeg: input.isVeg,
+        taxRatePercent: input.taxRatePercent,
+        hsnCode: input.hsnCode !== undefined ? input.hsnCode?.trim() || null : undefined,
         needsKitchen: input.needsKitchen,
         available: input.available,
         active: input.active,
@@ -855,6 +868,7 @@ const SETTINGS_BOUNDS: Record<string, [number, number]> = {
   TICKET_AMBER_S: [60, 7200],
   TICKET_RED_S: [60, 14400],
   TAX_RATE_PERCENT: [0, 100],
+  SERVICE_CHARGE_PERCENT: [0, 100],
 };
 
 export async function getAdminSettings(): Promise<AdminSettingsDto> {
@@ -869,6 +883,10 @@ export async function getAdminSettings(): Promise<AdminSettingsDto> {
       address: profile?.address ?? "",
       phone: profile?.phone ?? null,
       gstin: profile?.gstin ?? null,
+      fssai: profile?.fssai ?? null,
+      upiId: profile?.upiId ?? null,
+      upiName: profile?.upiName ?? null,
+      upiQrUrl: profile?.upiQrUrl ?? null,
       billFooter: profile?.billFooter ?? null,
     },
   };
@@ -939,6 +957,10 @@ export async function updateRestaurant(input: {
   address: string;
   phone?: string | null;
   gstin?: string | null;
+  fssai?: string | null;
+  upiId?: string | null;
+  upiName?: string | null;
+  upiQrUrl?: string | null;
   billFooter?: string | null;
   actorId?: string | null;
 }): Promise<void> {
@@ -953,6 +975,10 @@ export async function updateRestaurant(input: {
         address,
         phone: input.phone?.trim() || null,
         gstin: input.gstin?.trim() || null,
+        fssai: input.fssai?.trim() || null,
+        upiId: input.upiId?.trim() || null,
+        upiName: input.upiName?.trim() || null,
+        upiQrUrl: input.upiQrUrl?.trim() || null,
         billFooter: input.billFooter?.trim() || null,
       },
       update: {
@@ -960,6 +986,10 @@ export async function updateRestaurant(input: {
         address,
         phone: input.phone?.trim() || null,
         gstin: input.gstin?.trim() || null,
+        fssai: input.fssai?.trim() || null,
+        upiId: input.upiId?.trim() || null,
+        upiName: input.upiName?.trim() || null,
+        upiQrUrl: input.upiQrUrl?.trim() || null,
         billFooter: input.billFooter?.trim() || null,
       },
     });

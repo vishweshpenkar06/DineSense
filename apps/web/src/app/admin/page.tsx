@@ -32,6 +32,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CamerasPanel } from "./cameras-panel";
+import { DayClosePanel } from "./day-close-panel";
 import { FloorsPanel } from "./floors-panel";
 import { HealthPanel } from "./health-panel";
 import { PilotPanel } from "./pilot-panel";
@@ -40,10 +41,11 @@ import { SettingsPanel } from "./settings-panel";
 import { StaffPanel } from "./staff-panel";
 import { BTN, BTN_PRIMARY, CARD, duration, money, type Run } from "./ui";
 
-type Tab = "overview" | "menu" | "floors" | "cameras" | "staff" | "settings" | "health" | "pilot";
+type Tab = "overview" | "dayclose" | "menu" | "floors" | "cameras" | "staff" | "settings" | "health" | "pilot";
 
 const TABS: Array<{ key: Tab; label: string; icon: typeof LayoutDashboard }> = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
+  { key: "dayclose", label: "Day close", icon: Wallet },
   { key: "menu", label: "Menu", icon: UtensilsCrossed },
   { key: "floors", label: "Floors & tables", icon: Map },
   { key: "cameras", label: "Cameras", icon: Camera },
@@ -395,6 +397,21 @@ export default function AdminPage() {
                 ))}
               </div>
 
+              <div className="grid gap-2 sm:grid-cols-3">
+                {[
+                  { label: "GST collected", value: money(report?.taxPaise ?? 0) },
+                  { label: "Service charge", value: money(report?.serviceChargePaise ?? 0) },
+                  { label: "Discounts", value: money(report?.discountPaise ?? 0) },
+                ].map((row) => (
+                  <div key={row.label} className={`${CARD} flex items-center justify-between py-3`}>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
+                      {row.label}
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums">{row.value}</span>
+                  </div>
+                ))}
+              </div>
+
               <p className="px-1 text-[11px] text-faint">
                 Business days {report?.from ?? "—"} → {report?.to ?? "—"} (05:00 IST cutoff by default,
                 adjustable in Settings).
@@ -406,6 +423,40 @@ export default function AdminPage() {
                 <ReportTable title="Top dishes" dishes={report?.topDishes ?? []} />
                 <ReportTable title="Bottom dishes" dishes={report?.bottomDishes ?? []} />
                 <FloorsCard byFloor={report?.byFloor ?? []} />
+                <div className={`${CARD} lg:col-span-3`}>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold">GST breakup</h2>
+                    <span className="text-[10px] uppercase tracking-wider text-faint">Paid bills</span>
+                  </div>
+                  {(report?.taxByRate ?? []).length === 0 ? (
+                    <p className="mt-3 text-sm text-faint">No tax collected in this range.</p>
+                  ) : (
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="text-[10px] uppercase tracking-wider text-faint">
+                          <tr>
+                            <th className="pb-2">Rate</th>
+                            <th className="pb-2 text-right">Taxable</th>
+                            <th className="pb-2 text-right">CGST</th>
+                            <th className="pb-2 text-right">SGST</th>
+                            <th className="pb-2 text-right">Total tax</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(report?.taxByRate ?? []).map((line) => (
+                            <tr key={line.ratePercent} className="border-t border-line">
+                              <td className="py-2">{line.ratePercent}%</td>
+                              <td className="py-2 text-right tabular-nums">{money(line.taxablePaise)}</td>
+                              <td className="py-2 text-right tabular-nums">{money(Math.floor(line.taxPaise / 2))}</td>
+                              <td className="py-2 text-right tabular-nums">{money(line.taxPaise - Math.floor(line.taxPaise / 2))}</td>
+                              <td className="py-2 text-right font-semibold tabular-nums">{money(line.taxPaise)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
                 <div className={`${CARD} lg:col-span-3`}>
                   <h2 className="text-sm font-semibold">Operations</h2>
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -440,6 +491,7 @@ export default function AdminPage() {
               onChanged={loadCameras}
             />
           ) : null}
+          {tab === "dayclose" ? <DayClosePanel /> : null}
           {tab === "staff" ? (
             <StaffPanel staff={staff} busy={busy} run={run} onChanged={loadStaff} />
           ) : null}

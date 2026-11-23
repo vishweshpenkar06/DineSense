@@ -3,6 +3,7 @@
 import type { BillViewDto, OpenBillRowDto } from "@dinesense/core";
 import { Brand, BrandMark } from "@/components/brand";
 import { ConnectionBadge } from "@/components/connection-badge";
+import { UpiQr, upiPayUri } from "@/components/upi-qr";
 import { errorMessage, getJson, postJson } from "@/lib/client";
 import { useSnapshotLive } from "@/lib/live";
 import {
@@ -62,6 +63,14 @@ export default function ReceptionPage() {
   const [healthStatus, setHealthStatus] = useState<string | null>(null);
 
   const isAdmin = snapshot?.me.role === "ADMIN";
+  const upiUri = bill?.restaurant.upiId
+    ? upiPayUri({
+        upiId: bill.restaurant.upiId,
+        name: bill.restaurant.upiName,
+        amountPaise: bill.draft.totalPaise,
+        note: bill.bill?.billNumber ? `Bill ${bill.bill.billNumber}` : "DineSense order",
+      })
+    : null;
 
   const loadOpen = useCallback(async () => {
     try {
@@ -440,6 +449,7 @@ export default function ReceptionPage() {
                 {bill.restaurant.address ? <p>{bill.restaurant.address}</p> : null}
                 {bill.restaurant.phone ? <p>{bill.restaurant.phone}</p> : null}
                 {bill.restaurant.gstin ? <p>GSTIN: {bill.restaurant.gstin}</p> : null}
+                {bill.restaurant.fssai ? <p>FSSAI: {bill.restaurant.fssai}</p> : null}
               </div>
               <hr />
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -472,6 +482,7 @@ export default function ReceptionPage() {
                     <tr key={item.id}>
                       <td>
                         {item.name} <span style={{ opacity: 0.7 }}>({item.variant})</span>
+                        {item.hsnCode ? <div style={{ fontSize: "0.85em", opacity: 0.65 }}>HSN {item.hsnCode}</div> : null}
                         {item.note ? <div style={{ fontSize: "0.9em" }}>{item.note}</div> : null}
                       </td>
                       <td className="amount">{item.qty}</td>
@@ -523,20 +534,39 @@ export default function ReceptionPage() {
                   <span className="amount">-{money(bill.draft.discountPaise)}</span>
                 </div>
               ) : null}
+              {(bill.draft.serviceChargePaise ?? 0) > 0 ? (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Service charge</span>
+                  <span className="amount">{money(bill.draft.serviceChargePaise ?? 0)}</span>
+                </div>
+              ) : null}
               {bill.draft.taxPaise > 0 ? (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Taxable value</span>
                     <span className="amount">{money(bill.draft.taxableAmountPaise)}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>CGST ({bill.taxRatePercent / 2}%)</span>
-                    <span className="amount">{money(bill.draft.cgstPaise)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>SGST ({bill.taxRatePercent / 2}%)</span>
-                    <span className="amount">{money(bill.draft.sgstPaise)}</span>
-                  </div>
+                  {bill.draft.taxBreakup && bill.draft.taxBreakup.length > 0 ? (
+                    bill.draft.taxBreakup.map((line) => (
+                      <div key={line.ratePercent} style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>
+                          GST {line.ratePercent}% (CGST {line.ratePercent / 2}% + SGST {line.ratePercent / 2}%)
+                        </span>
+                        <span className="amount">{money(line.taxPaise)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>CGST ({bill.taxRatePercent / 2}%)</span>
+                        <span className="amount">{money(bill.draft.cgstPaise)}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>SGST ({bill.taxRatePercent / 2}%)</span>
+                        <span className="amount">{money(bill.draft.sgstPaise)}</span>
+                      </div>
+                    </>
+                  )}
                   {bill.taxInclusive ? (
                     <p style={{ fontSize: "0.9em", opacity: 0.8 }}>Tax included in prices.</p>
                   ) : null}
@@ -553,6 +583,27 @@ export default function ReceptionPage() {
                 <span>TOTAL</span>
                 <span className="amount">{money(bill.draft.totalPaise)}</span>
               </div>
+
+              {bill.restaurant.upiQrUrl || upiUri ? (
+                <div style={{ textAlign: "center", marginTop: "10px" }}>
+                  <p style={{ fontSize: "0.9em", fontWeight: 600 }}>
+                    Scan to pay {money(bill.draft.totalPaise)} via UPI
+                  </p>
+                  {bill.restaurant.upiQrUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={bill.restaurant.upiQrUrl}
+                      alt="Shop UPI QR"
+                      style={{ width: "96px", height: "96px", objectFit: "contain", margin: "0 auto" }}
+                    />
+                  ) : upiUri ? (
+                    <div style={{ display: "flex", justifyContent: "center" }}>
+                      <UpiQr value={upiUri} size={96} />
+                    </div>
+                  ) : null}
+                  {bill.restaurant.upiId ? <p>{bill.restaurant.upiId}</p> : null}
+                </div>
+              ) : null}
 
               {bill.bill && bill.bill.payments.length > 0 ? (
                 <>
@@ -789,6 +840,32 @@ export default function ReceptionPage() {
                     {money(enteredPaise)}
                     {changePaise > 0 ? ` · change ${money(changePaise)}` : ""}
                   </p>
+                  {bill.restaurant.upiQrUrl || upiUri ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-canvas/50 p-3">
+                      {bill.restaurant.upiQrUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={bill.restaurant.upiQrUrl}
+                          alt="Shop UPI QR"
+                          className="h-36 w-36 rounded-xl bg-white object-contain p-2"
+                        />
+                      ) : upiUri ? (
+                        <UpiQr value={upiUri} size={132} />
+                      ) : null}
+                      <div className="min-w-0 text-sm">
+                        <p className="font-semibold text-ink">Scan to pay by UPI</p>
+                        <p className="mt-1 text-muted">
+                          {bill.restaurant.upiName ?? "Shop"} · {money(totalPaise)}
+                        </p>
+                        {bill.restaurant.upiId ? (
+                          <p className="mt-0.5 text-xs text-faint">{bill.restaurant.upiId}</p>
+                        ) : null}
+                        <p className="mt-2 text-xs text-muted">
+                          After the customer pays, enter the UPI amount and confirm.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">
                     {[
                       { label: "Cash", value: cash, set: setCash },

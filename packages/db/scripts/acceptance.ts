@@ -26,6 +26,7 @@ import {
   getAdminFloors,
   getAdminMenu,
   getBillView,
+  getDayClose,
   getCameraCalibration,
   getKitchenTickets,
   getMenuForZone,
@@ -68,6 +69,7 @@ import {
   getSetupStatus,
   reopenSetup,
   runSetupDemo,
+  saveDayClose,
   savePilotNotes,
   workerLastTick,
   workerTick,
@@ -786,6 +788,35 @@ check(
 );
 check("AC floor prices are used for the inclusive bill", inclusiveView.draft.subtotalPaise === 40000, `subtotal=${inclusiveView.draft.subtotalPaise}`);
 
+await setTax(5, "exclusive");
+await updateAdminSettings({
+  settings: { SERVICE_CHARGE_PERCENT: 10 },
+  actorId: adminUser.id,
+});
+await resetRuntime();
+await sim("occupied");
+await placeOrder({
+  tableId: tableId,
+  items: [{ variantId: halfNoodles.id, qty: 2 }],
+  clientKey: randomUUID(),
+});
+const serviceSession = await openSession();
+if (!serviceSession) throw new Error("service-charge test session missing");
+const serviceView = await getBillView(serviceSession.id);
+check(
+  "service charge is added before GST and shown in the breakup",
+  serviceView.draft.subtotalPaise === 18000 &&
+    serviceView.draft.serviceChargePaise === 1800 &&
+    serviceView.draft.taxPaise === 990 &&
+    serviceView.draft.totalPaise === 20800 &&
+    serviceView.draft.taxBreakup?.[0]?.ratePercent === 5 &&
+    serviceView.draft.taxBreakup?.[0]?.taxablePaise === 19800,
+  `subtotal=${serviceView.draft.subtotalPaise} service=${serviceView.draft.serviceChargePaise} tax=${serviceView.draft.taxPaise} total=${serviceView.draft.totalPaise}`,
+);
+await updateAdminSettings({
+  settings: { SERVICE_CHARGE_PERCENT: 0 },
+  actorId: adminUser.id,
+});
 await setTax(0, "exclusive");
 
 // ---------------------------------------------------------------------------
@@ -810,6 +841,23 @@ await payBill({
 
 const activeSettings = await loadSettings();
 const today = businessDateString(new Date(), activeSettings.BUSINESS_DAY_START);
+const dayClose = await getDayClose();
+check(
+  "day close totals the cash taken today",
+  dayClose.businessDay === today && dayClose.expectedCashPaise === reportTotal,
+  `day=${dayClose.businessDay} cash=${dayClose.expectedCashPaise} expected=${reportTotal}`,
+);
+const savedClose = await saveDayClose({
+  businessDay: today,
+  countedCashPaise: dayClose.expectedCashPaise,
+  note: "acceptance drawer count",
+  actorId: adminUser.id,
+});
+check(
+  "day close saves a zero cash variance",
+  savedClose.variancePaise === 0 && savedClose.closedAt !== null && savedClose.countedCashPaise === reportTotal,
+  `variance=${savedClose.variancePaise}`,
+);
 const yesterday = shiftBusinessDate(today, -1);
 const summary = await getReportSummary({ from: today, to: today });
 const rawBills = await prisma.bill.findMany({
