@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginAdminApi, loginPin, resetTables } from "./helpers";
+import { ADMIN_PASSWORD, WAITER_PIN, loginAdminApi, loginPin, resetTables } from "./helpers";
 
 test("shadow mode is visible to staff and the owner can review corrections", async ({
   browser,
@@ -16,7 +16,7 @@ test("shadow mode is visible to staff and the owner can review corrections", asy
 
   const waiterContext = await browser.newContext();
   const waiter = await waiterContext.newPage();
-  await loginPin(waiter, "1111");
+  await loginPin(waiter, WAITER_PIN);
   await expect(waiter.getByText(/Pilot shadow mode/)).toBeVisible();
 
   const snapshot = (await (await request.get("/api/snapshot")).json()) as {
@@ -30,7 +30,7 @@ test("shadow mode is visible to staff and the owner can review corrections", asy
 
   await page.goto("/login");
   await page.getByRole("button", { name: "Admin password" }).click();
-  await page.getByPlaceholder("Admin password").fill("admin123");
+  await page.getByPlaceholder("Admin password").fill(ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await page.getByRole("button", { name: "Pilot" }).click();

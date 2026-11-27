@@ -1,5 +1,10 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
+export const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "admin123";
+export const WAITER_PIN = process.env.E2E_WAITER_PIN ?? "1111";
+export const CHEF_PIN = process.env.E2E_CHEF_PIN ?? "2222";
+export const RECEPTIONIST_PIN = process.env.E2E_RECEPTIONIST_PIN ?? "3333";
+
 export async function loginPin(page: Page, pin: string): Promise<void> {
   await page.goto("/login");
   for (const digit of pin) {
@@ -9,7 +14,7 @@ export async function loginPin(page: Page, pin: string): Promise<void> {
 }
 
 export async function loginAdminApi(request: APIRequestContext): Promise<void> {
-  const response = await request.post("/api/auth/login", { data: { password: "admin123" } });
+  const response = await request.post("/api/auth/login", { data: { password: ADMIN_PASSWORD } });
   expect(response.ok()).toBeTruthy();
 }
 

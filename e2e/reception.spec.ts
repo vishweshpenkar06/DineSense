@@ -1,11 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  addFirstVariant,
-  loginAdminApi,
-  loginPin,
-  openTableOrder,
-  resetTables,
-} from "./helpers";
+import { RECEPTIONIST_PIN, WAITER_PIN, addFirstVariant, loginAdminApi, loginPin, openTableOrder, resetTables } from "./helpers";
 
 test("reception adds extras, discounts, splits payment and prints", async ({
   browser,
@@ -16,7 +10,7 @@ test("reception adds extras, discounts, splits payment and prints", async ({
 
   const waiterContext = await browser.newContext();
   const waiter = await waiterContext.newPage();
-  await loginPin(waiter, "1111");
+  await loginPin(waiter, WAITER_PIN);
   await openTableOrder(waiter, "G3");
   await addFirstVariant(waiter);
   await waiter.getByRole("button", { name: "Send to kitchen" }).click();
@@ -24,11 +18,11 @@ test("reception adds extras, discounts, splits payment and prints", async ({
 
   const receptionContext = await browser.newContext();
   const reception = await receptionContext.newPage();
-  await loginPin(reception, "3333");
+  await loginPin(reception, RECEPTIONIST_PIN);
   await expect(reception).toHaveURL(/\/reception$/);
 
   await reception.getByRole("button", { name: /G3/ }).first().click();
-  await expect(reception.locator(".bill-print")).toContainText("DineSense Demo Restaurant");
+  await expect(reception.locator(".bill-print")).toContainText("The Chinese Chef");
 
   await reception.getByPlaceholder("Custom extra").fill("Water");
   await reception.getByPlaceholder("₹", { exact: true }).fill("20");

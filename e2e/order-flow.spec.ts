@@ -1,13 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  addFirstVariant,
-  kitchenTicketsFor,
-  loginAdminApi,
-  loginPin,
-  openTableOrder,
-  resetTables,
-  tableCard,
-} from "./helpers";
+import { CHEF_PIN, WAITER_PIN, addFirstVariant, kitchenTicketsFor, loginAdminApi, loginPin, openTableOrder, resetTables, tableCard } from "./helpers";
 
 test("waiter → chef → waiter → bill across two devices", async ({ browser, request }) => {
   await loginAdminApi(request);
@@ -15,7 +7,7 @@ test("waiter → chef → waiter → bill across two devices", async ({ browser,
 
   const waiterContext = await browser.newContext();
   const waiter = await waiterContext.newPage();
-  await loginPin(waiter, "1111");
+  await loginPin(waiter, WAITER_PIN);
   await expect(waiter).toHaveURL(/\/waiter$/);
 
   await openTableOrder(waiter, "G3");
@@ -25,7 +17,7 @@ test("waiter → chef → waiter → bill across two devices", async ({ browser,
 
   const chefContext = await browser.newContext();
   const chef = await chefContext.newPage();
-  await loginPin(chef, "2222");
+  await loginPin(chef, CHEF_PIN);
   await expect(chef).toHaveURL(/\/chef$/);
 
   const ticket = chef.locator("article").filter({ hasText: "G3" }).first();
@@ -59,7 +51,7 @@ test("offline order is queued and sent exactly once", async ({ browser, request 
 
   const waiterContext = await browser.newContext();
   const waiter = await waiterContext.newPage();
-  await loginPin(waiter, "1111");
+  await loginPin(waiter, WAITER_PIN);
   await openTableOrder(waiter, "G5");
   await addFirstVariant(waiter);
 

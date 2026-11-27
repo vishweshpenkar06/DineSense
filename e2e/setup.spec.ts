@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginAdminApi, resetTables } from "./helpers";
+import { ADMIN_PASSWORD, loginAdminApi, resetTables } from "./helpers";
 
 test("fresh owner is sent to the setup wizard and can finish it", async ({ page, request }) => {
   await loginAdminApi(request);
@@ -9,7 +9,7 @@ test("fresh owner is sent to the setup wizard and can finish it", async ({ page,
 
   await page.goto("/login");
   await page.getByRole("button", { name: "Admin password" }).click();
-  await page.getByPlaceholder("Admin password").fill("admin123");
+  await page.getByPlaceholder("Admin password").fill(ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/setup$/);
 

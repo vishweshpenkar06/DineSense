@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
         handleIntent(getIntent());
 
         if (currentServerUrl == null || currentServerUrl.isEmpty()) {
-            showServerSetup("Connect to the restaurant Wi-Fi, then enter the server address.", BuildConfig.DEFAULT_SERVER_URL);
+            showServerSetup(getString(R.string.setup_help), BuildConfig.DEFAULT_SERVER_URL);
         } else if (!initialLoadStarted && (setupView == null || setupView.getVisibility() != View.VISIBLE)) {
             hideServerSetup();
             webView.loadUrl(currentServerUrl);
@@ -183,7 +183,7 @@ public class MainActivity extends Activity {
                 if (request.isForMainFrame()) {
                     String detail = error != null ? String.valueOf(error.getDescription()) : "Network error";
                     showServerSetup("Could not reach " + (currentServerUrl == null ? "the server" : currentServerUrl)
-                            + ".\nCheck the Wi-Fi and server address.\n\n" + detail,
+                            + ".\nConnect to Wi-Fi \"The Chinese Chef\" and check the server address.\n\n" + detail,
                             currentServerUrl == null ? BuildConfig.DEFAULT_SERVER_URL : currentServerUrl);
                 }
             }
@@ -378,7 +378,7 @@ public class MainActivity extends Activity {
         if (uri == null || uri.getHost() == null
                 || (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme()))) {
             setupMessage.setTextColor(COLOR_CORAL);
-            setupMessage.setText("Enter a valid address, for example http://192.168.1.46");
+            setupMessage.setText("Enter a valid address, for example http://192.168.1.43");
             return;
         }
         currentServerUrl = normalized;

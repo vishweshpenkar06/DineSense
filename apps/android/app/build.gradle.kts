@@ -18,9 +18,9 @@ android {
         applicationId = "com.dinesense.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
-        buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://192.168.1.46\"")
+        versionCode = 3
+        versionName = "1.2.0"
+        buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://192.168.1.43\"")
     }
 
     buildFeatures {

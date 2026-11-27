@@ -14,14 +14,14 @@ The server still runs on the mini PC; the APK is not a copy of the database.
 ```text
 dist/DineSense.apk
 package: com.dinesense.app
-version: 1.1.0 (2)
+version: 1.2.0 (3)
 minSdk: 26 (Android 8)
 targetSdk: 35
 signing: release keystore on this machine
 ```
 
 Install it on the phone (allow install from this source), open it, and enter the
-server address. The first-launch form is pre-filled with `http://192.168.1.46`; tap
+server address. The first-launch form is pre-filled with `http://192.168.1.43`; tap
 **Open DineSense**. The phone must be on the restaurant Wi-Fi.
 
 Smoke-tested in an Android 15 emulator: server setup, web login, WebView rendering,
@@ -82,7 +82,7 @@ Without a signing config, `assembleDebug` still produces an installable debug AP
 
 ## Server URL, trust and notifications
 
-- The shell defaults to `http://192.168.1.46`. HTTP works on the LAN and keeps the
+- The shell defaults to `http://192.168.1.43`. HTTP works on the LAN and keeps the
   first install simple. Use HTTPS (`https://...`) if the Caddy CA is installed on the
   phone; the shell trusts user-installed CAs through `network_security_config.xml`.
 - Native notifications require the Android notification permission. The app requests

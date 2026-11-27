@@ -68,7 +68,7 @@ export default function WaiterPage() {
       return;
     }
     if (notificationState === "insecure") {
-      toast.error("System notifications need the secure HTTPS link. Sound and vibration still work.");
+      toast.error("Open the DineSense app on The Chinese Chef Wi-Fi for pickup alerts. Sound and vibration still work.");
       return;
     }
     if (notificationState === "unsupported") {
@@ -301,7 +301,7 @@ export default function WaiterPage() {
                 : notificationState === "denied"
                   ? "Notifications are blocked in browser settings"
                   : notificationState === "insecure" || notificationState === "unsupported"
-                    ? "System notifications need HTTPS"
+                    ? "Use the DineSense app for pickup alerts"
                     : "Enable pickup notifications"
             }
             aria-label={

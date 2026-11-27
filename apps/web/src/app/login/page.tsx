@@ -219,8 +219,8 @@ export default function LoginPage() {
           <InstallApp />
 
           <p className="mt-6 text-xs leading-relaxed text-faint">
-            Staff PINs are created by the owner. Development seeds and setup instructions live in
-            the project README. For phone alerts, use the secure HTTPS link.
+            Staff PINs are created by the owner. On phones, connect to The Chinese Chef Wi-Fi and
+            open the DineSense app.
           </p>
         </div>
       </section>

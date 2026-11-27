@@ -175,7 +175,7 @@ async function main(): Promise<void> {
     await prisma.restaurantProfile.create({
       data: {
         id: "default",
-        name: "My Restaurant",
+        name: "The Chinese Chef",
         address: "Complete the setup wizard to set your address",
       },
     });
@@ -198,7 +198,7 @@ async function main(): Promise<void> {
   await prisma.restaurantProfile.create({
     data: {
       id: "default",
-      name: "DineSense Demo Restaurant",
+      name: "The Chinese Chef",
       address: "12 Market Road, Indore, Madhya Pradesh 452001",
       phone: "+91 90000 00000",
       billFooter: "Thank you, visit again!",
@@ -295,12 +295,15 @@ async function main(): Promise<void> {
   }
 
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
+  const waiterPin = process.env.SEED_WAITER_PIN ?? "1111";
+  const chefPin = process.env.SEED_CHEF_PIN ?? "2222";
+  const receptionistPin = process.env.SEED_RECEPTIONIST_PIN ?? "3333";
   await prisma.user.createMany({
     data: [
       { name: "Owner", role: "ADMIN", passwordHash: hashSecret(adminPassword) },
-      { name: "Waiter", role: "WAITER", pinHash: hashSecret("1111") },
-      { name: "Chef", role: "CHEF", pinHash: hashSecret("2222") },
-      { name: "Receptionist", role: "RECEPTIONIST", pinHash: hashSecret("3333") },
+      { name: "Waiter", role: "WAITER", pinHash: hashSecret(waiterPin) },
+      { name: "Chef", role: "CHEF", pinHash: hashSecret(chefPin) },
+      { name: "Receptionist", role: "RECEPTIONIST", pinHash: hashSecret(receptionistPin) },
     ],
   });
 
@@ -308,7 +311,7 @@ async function main(): Promise<void> {
   console.log("  zones: Ground Floor (non-AC), First Floor (AC)");
   console.log("  11 tables: G1-G5, F1-F6");
   console.log("  2 cameras,", MENU.length, "categories, demo menu");
-  console.log("  login: admin / " + adminPassword + " | waiter PIN 1111 | chef PIN 2222 | receptionist PIN 3333");
+  console.log("  login: admin / " + adminPassword + " | waiter PIN " + waiterPin + " | chef PIN " + chefPin + " | receptionist PIN " + receptionistPin);
 }
 
 main()

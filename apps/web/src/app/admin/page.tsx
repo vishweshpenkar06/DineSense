@@ -43,6 +43,8 @@ import { BTN, BTN_PRIMARY, CARD, duration, money, type Run } from "./ui";
 
 type Tab = "overview" | "dayclose" | "menu" | "floors" | "cameras" | "staff" | "settings" | "health" | "pilot";
 
+const DEV_UI = process.env.NEXT_PUBLIC_ENABLE_DEV_UI === "true";
+
 const TABS: Array<{ key: Tab; label: string; icon: typeof LayoutDashboard }> = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
   { key: "dayclose", label: "Day close", icon: Wallet },
@@ -224,12 +226,14 @@ export default function AdminPage() {
                 <span className="text-[11px] text-faint">{snapshot?.me.name ?? "Owner"}</span>
                 <ConnectionBadge status={stream} />
               </div>
-              <Link
-                href="/dev"
-                className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-muted transition hover:bg-raised hover:text-ink"
-              >
-                <ExternalLink className="h-4 w-4" /> Dev console
-              </Link>
+              {DEV_UI ? (
+                <Link
+                  href="/dev"
+                  className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-muted transition hover:bg-raised hover:text-ink"
+                >
+                  <ExternalLink className="h-4 w-4" /> Dev console
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void signOut()}
@@ -257,9 +261,11 @@ export default function AdminPage() {
             </div>
             <div className="flex items-center gap-1.5 lg:hidden">
               <ConnectionBadge status={stream} />
-              <Link href="/dev" className={BTN}>
-                Dev console
-              </Link>
+              {DEV_UI ? (
+                <Link href="/dev" className={BTN}>
+                  Dev console
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void signOut()}

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginAdminApi, resetTables } from "./helpers";
+import { ADMIN_PASSWORD, loginAdminApi, resetTables } from "./helpers";
 
 const IMPORT_CSV = `category,item,local_name,variant,price_ground,price_first,veg,needs_kitchen
 E2E Import,E2E Momo,,Half,50,60,Y,Y
@@ -28,7 +28,7 @@ test("owner configures settings, tables and imports a menu without the database"
 
   await page.goto("/login");
   await page.getByRole("button", { name: "Admin password" }).click();
-  await page.getByPlaceholder("Admin password").fill("admin123");
+  await page.getByPlaceholder("Admin password").fill(ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 

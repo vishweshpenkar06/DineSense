@@ -14,6 +14,13 @@ charge, FSSAI/UPI QR and daily cash close. The remaining work is the approved la
 roadmap (inventory/loyalty, U1–U7 UI migration, printer/phone hardening and the
 on-site pilot).
 
+### Shipped configuration
+
+- Restaurant on bills: **The Chinese Chef**; staff phone Wi-Fi: **The Chinese Chef**.
+- LAN server: `http://192.168.1.43` (reserve this address on the router).
+- Staff/admin credentials are generated into the private `.env` file; never commit it.
+- Demo role bypass, dev console/routes and demo camera videos are disabled by default.
+
 | Test | Result |
 |---|---|
 | Core domain (`npm run test:core`) | **121/121** |
@@ -60,9 +67,9 @@ Then:
 | Owner/admin | `/admin` |
 | Dev console (builder only) | `/dev` (needs `ENABLE_DEV_CONSOLE=true`) |
 
-Development seed credentials (demo database only): admin password `admin123`,
-waiter PIN `1111`, chef `2222`, receptionist `3333`. Production installs use the
-password printed by `install.sh`; change it in Admin → Staff after handover.
+The shipped install uses the private credentials in `.env`. Demo seed defaults
+(`admin123`, `1111`, `2222`, `3333`) apply only when the `SEED_*` variables are absent.
+Change staff PINs later in Admin → Staff and keep `.env` private.
 
 ### Development (Docker Compose)
 
