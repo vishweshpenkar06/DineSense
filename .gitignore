@@ -18,6 +18,7 @@ tmp/
 caddy-root.crt
 
 test-results/
+.taste-skill/
 playwright-report/
 blob-report/
 

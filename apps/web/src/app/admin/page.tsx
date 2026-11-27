@@ -192,6 +192,15 @@ export default function AdminPage() {
     );
   }
 
+  const activeTables = snapshot?.tables.filter((table) => table.session).length ?? 0;
+  const waitingAlerts =
+    snapshot?.tasks.filter(
+      (task) =>
+        (task.status === "OPEN" || task.status === "ACK") &&
+        (task.type === "needs_order" || task.type === "food_ready"),
+    ).length ?? 0;
+  const readyTables = snapshot?.tables.filter((table) => table.state === "food_ready").length ?? 0;
+
   const activeTab = TABS.find((entry) => entry.key === tab) ?? TABS[0];
 
   return (
@@ -200,7 +209,7 @@ export default function AdminPage() {
         <aside className="hidden w-60 shrink-0 lg:block">
           <div className="sticky top-5 flex h-[calc(100dvh-2.5rem)] flex-col rounded-3xl border border-line bg-surface p-4">
             <Brand />
-            <p className="mt-5 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-faint">Owner console</p>
+            <p className="mt-5 px-2 text-sm text-muted">The Chinese Chef</p>
             <nav className="mt-2 space-y-0.5">
               {TABS.map((entry) => {
                 const Icon = entry.icon;
@@ -211,8 +220,8 @@ export default function AdminPage() {
                     onClick={() => setTab(entry.key)}
                     className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-sm font-medium transition ${
                       tab === entry.key
-                        ? "bg-accent text-canvas"
-                        : "text-muted hover:bg-raised hover:text-ink"
+                        ? "border-l-2 border-accent bg-raised pl-2.5 text-ink"
+                        : "border-l-2 border-transparent pl-2.5 text-muted hover:bg-raised hover:text-ink"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -223,7 +232,7 @@ export default function AdminPage() {
             </nav>
             <div className="mt-auto space-y-2 border-t border-line pt-3">
               <div className="flex items-center justify-between px-2">
-                <span className="text-[11px] text-faint">{snapshot?.me.name ?? "Owner"}</span>
+                <span className="text-xs text-muted">{snapshot?.me.name ?? "Owner"}</span>
                 <ConnectionBadge status={stream} />
               </div>
               {DEV_UI ? (
@@ -297,7 +306,7 @@ export default function AdminPage() {
 
           {snapshot?.settings.SHADOW_MODE ? (
             <div className="mt-4 rounded-2xl border border-accent/25 bg-accent/[0.06] px-4 py-3 text-sm text-accent">
-              Pilot shadow mode is ON — keep the paper pad as the source of truth while you compare the
+              Pilot shadow mode is ON. Keep the paper pad as the source of truth while you compare the
               app with daily service.
             </div>
           ) : null}
@@ -315,7 +324,7 @@ export default function AdminPage() {
 
           {tab === "overview" ? (
             <section className="mt-4 space-y-3">
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-2">
+              <div className="flex flex-wrap items-center gap-1 border-b border-line pb-2">
                 {[
                   ["today", "Today"],
                   ["yesterday", "Yesterday"],
@@ -325,8 +334,8 @@ export default function AdminPage() {
                   <button
                     key={value}
                     type="button"
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                      preset === value ? "bg-accent text-canvas" : "text-muted hover:bg-raised hover:text-ink"
+                    className={`border-b-2 px-3 py-1.5 text-xs font-medium transition ${
+                      preset === value ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
                     }`}
                     onClick={() => {
                       setPreset(value);
@@ -338,8 +347,8 @@ export default function AdminPage() {
                 ))}
                 <button
                   type="button"
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                    preset === "" ? "bg-accent text-canvas" : "text-muted hover:bg-raised hover:text-ink"
+                  className={`border-b-2 px-3 py-1.5 text-xs font-medium transition ${
+                    preset === "" ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
                   }`}
                   onClick={() => setPreset("")}
                 >
@@ -377,48 +386,59 @@ export default function AdminPage() {
                 ) : null}
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
-                <div className="col-span-2 rounded-2xl border border-accent/25 bg-accent/[0.06] p-4 md:col-span-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent/80">Earnings</p>
-                    <Wallet className="h-4 w-4 text-accent/70" />
-                  </div>
-                  <p className="mt-2 font-display text-[1.7rem] font-medium leading-none tracking-[-0.02em]">
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-5">
+                <div className="col-span-2 bg-surface p-4 md:col-span-1">
+                  <p className="text-sm text-muted">Earnings</p>
+                  <p className="mt-2 font-display text-3xl font-medium leading-none tracking-[-0.02em]">
                     {report ? money(report.earningsPaise) : "—"}
                   </p>
                 </div>
                 {[
-                  { label: "Bills", value: report?.billsCount ?? 0, icon: ReceiptText },
-                  { label: "Average bill", value: report ? money(report.averageBillPaise) : "—", icon: ShoppingBag },
-                  { label: "Orders", value: report?.ordersCount ?? 0, icon: UtensilsCrossed },
-                  { label: "Items ordered", value: report?.itemsCount ?? 0, icon: Users },
-                ].map(({ label, value, icon: Icon }) => (
-                  <div key={label} className={CARD}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-faint">{label}</p>
-                      <Icon className="h-3.5 w-3.5 text-faint" />
-                    </div>
-                    <p className="mt-2 text-xl font-semibold tabular-nums">{value}</p>
+                  { label: "Bills", value: report?.billsCount ?? 0 },
+                  { label: "Average bill", value: report ? money(report.averageBillPaise) : "—" },
+                  { label: "Orders", value: report?.ordersCount ?? 0 },
+                  { label: "Items ordered", value: report?.itemsCount ?? 0 },
+                ].map((cell) => (
+                  <div key={cell.label} className="bg-surface p-4">
+                    <p className="text-sm text-muted">{cell.label}</p>
+                    <p className="mt-2 text-2xl font-medium tabular-nums">{cell.value}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3">
                 {[
                   { label: "GST collected", value: money(report?.taxPaise ?? 0) },
                   { label: "Service charge", value: money(report?.serviceChargePaise ?? 0) },
                   { label: "Discounts", value: money(report?.discountPaise ?? 0) },
                 ].map((row) => (
-                  <div key={row.label} className={`${CARD} flex items-center justify-between py-3`}>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">
-                      {row.label}
-                    </span>
-                    <span className="text-sm font-semibold tabular-nums">{row.value}</span>
+                  <div key={row.label} className="flex items-center justify-between bg-surface px-4 py-3">
+                    <span className="text-sm text-muted">{row.label}</span>
+                    <span className="text-base font-medium tabular-nums">{row.value}</span>
                   </div>
                 ))}
               </div>
 
-              <p className="px-1 text-[11px] text-faint">
+              <div className="rounded-2xl border border-line bg-surface p-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold">Right now</h2>
+                  <span className="text-xs text-muted">The Chinese Chef · live</span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Active tables", value: activeTables },
+                    { label: "Waiting alerts", value: waitingAlerts },
+                    { label: "Food ready", value: readyTables },
+                  ].map((cell) => (
+                    <div key={cell.label} className="rounded-xl bg-canvas/40 px-3 py-2">
+                      <p className="text-xs text-muted">{cell.label}</p>
+                      <p className="mt-1 text-2xl font-medium tabular-nums">{cell.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="px-1 text-xs text-muted">
                 Business days {report?.from ?? "—"} → {report?.to ?? "—"} (05:00 IST cutoff by default,
                 adjustable in Settings).
               </p>
@@ -432,14 +452,14 @@ export default function AdminPage() {
                 <div className={`${CARD} lg:col-span-3`}>
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-semibold">GST breakup</h2>
-                    <span className="text-[10px] uppercase tracking-wider text-faint">Paid bills</span>
+                    <span className="text-xs text-faint">Paid bills</span>
                   </div>
                   {(report?.taxByRate ?? []).length === 0 ? (
                     <p className="mt-3 text-sm text-faint">No tax collected in this range.</p>
                   ) : (
                     <div className="mt-3 overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="text-[10px] uppercase tracking-wider text-faint">
+                        <thead className="text-xs text-faint">
                           <tr>
                             <th className="pb-2">Rate</th>
                             <th className="pb-2 text-right">Taxable</th>
@@ -472,7 +492,7 @@ export default function AdminPage() {
                       ["Alert response", duration(report?.operations.avgAlertResponseS ?? null)],
                     ].map(([label, value]) => (
                       <div key={label} className="rounded-xl border border-line bg-canvas/40 px-3 py-2.5">
-                        <p className="text-[10px] uppercase tracking-wider text-faint">{label}</p>
+                        <p className="text-xs text-faint">{label}</p>
                         <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
                       </div>
                     ))}
@@ -518,7 +538,7 @@ function HourlyChart({ byHour }: { byHour: ReportSummaryDto["byHour"] }) {
     <div className={`${CARD} lg:col-span-2`}>
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Earnings by hour</h2>
-        <span className="text-[10px] uppercase tracking-wider text-faint">IST</span>
+        <span className="text-xs text-faint">IST</span>
       </div>
       {byHour.length === 0 ? (
         <p className="mt-4 text-sm text-faint">No paid bills in this range.</p>
@@ -625,7 +645,7 @@ function ReportTable({
               <tr key={`${title}-${dish.name}-${dish.variant}`}>
                 <td className="py-2">
                   <span className="text-ink">{dish.name}</span>{" "}
-                  <span className="text-[11px] text-faint">({dish.variant})</span>
+                  <span className="text-xs text-muted">({dish.variant})</span>
                 </td>
                 <td className="py-2 text-right text-xs tabular-nums text-muted">{dish.qty}×</td>
                 <td className="py-2 text-right text-xs tabular-nums">{money(dish.amountPaise)}</td>

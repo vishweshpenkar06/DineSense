@@ -17,8 +17,8 @@
   router/AP for staff devices and the mini PC.
 - Cover both floors and the kitchen with Wi-Fi; 5 GHz APs are fine. The mini PC
   should be wired even if staff are on Wi-Fi.
-- No internet is required for service. Internet is only for install/updates and
-  optional off-site backups.
+- The staff Wi-Fi name is **The Chinese Chef**. Reserve `192.168.1.43` for the mini PC; the Android app is pre-filled with that address.
+- No internet is required for service. Internet is only for install/updates and optional off-site backups.
 
 ## Cameras
 

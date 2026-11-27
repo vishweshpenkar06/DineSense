@@ -24,9 +24,7 @@ India first, with an optional cloud management layer.
 - **Do not chase:** full multi-tenant SaaS, delivery aggregators, inventory, loyalty,
   customer ordering and chain HQ before the single-site product is paid-for and stable.
 
-**Verdict:** DineSense is a strong pilot and demo. It is not yet a mass-market product:
-the remaining gaps are billing compliance, printing, payments, onboarding, licensing,
-fleet operations and production hardening — not the order engine.
+**Verdict:** the shipped install is ready for a single-site pilot. Billing compliance, UPI QR, day close, production flags and the native APK are in place. The remaining gaps for a mass-market product are native printing, licensing, fleet operations and multi-outlet support.
 
 ---
 
@@ -35,15 +33,14 @@ fleet operations and production hardening — not the order engine.
 - Local-first Postgres/worker/web/vision stack in Docker Compose.
 - Waiter PWA, chef board, reception billing, admin dashboard, setup wizard, camera
   calibration, health/diagnostics, pilot tooling.
-- Engine tests: core 119, acceptance 119, vision 36, Playwright 9.
+- Engine tests: core 121, acceptance 122, vision 36, Playwright 9.
 - 120-item AC/non-AC menu; per-floor prices; Half/Full and Dry/Gravy variants.
 - Offline order queue, audit log, camera privacy, nightly backups, power-cut recovery.
 - Theme foundation, shared components, component gallery, install prompt, PWA shortcuts.
 - Native Android shell APK:
   - Signed release APK at `dist/DineSense.apk`.
-  - Package `com.dinesense.app`, version 1.0.0, Android 8+.
-  - First-run server setup; app-icon shortcuts for Waiter/Kitchen/Reception/Owner and
-    Server settings.
+  - Package `com.dinesense.app`, version 1.2.0 (build 3), Android 8+.
+  - First-run server setup shows Wi-Fi **The Chinese Chef** and pre-fills `http://192.168.1.43`; app-icon shortcuts for Waiter/Kitchen/Reception/Owner and Server settings. No CA is needed for the APK.
   - Native pickup notifications, keep-screen-awake, Android print bridge, file import,
     downloads, back-button handling, LAN HTTP/HTTPS with user-CA trust.
   - Source under `apps/android`; APK build in `docs/APK.md`.

@@ -51,25 +51,18 @@ export default function LoginPage() {
       <section className="relative hidden flex-col justify-between overflow-hidden border-r border-line bg-surface p-12 lg:flex">
         <Brand />
         <div className="relative z-10 max-w-lg">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
-            Service operations
-          </p>
           <h1 className="mt-5 font-display text-[clamp(2.8rem,5vw,4.6rem)] font-medium leading-[1.02] tracking-[-0.03em] text-ink">
-            The floor,
+            Tables, orders
             <br />
-            the kitchen,
-            <br />
-            and the bill.
-            <br />
-            <span className="text-accent">In sync.</span>
+            and bills. In sync.
           </h1>
           <p className="mt-6 max-w-md text-base leading-relaxed text-muted">
             One quiet system for a busy room. Tables are watched, orders reach the
-            kitchen, and every bill adds up — even when the internet doesn&apos;t.
+            kitchen, and every bill adds up without internet.
           </p>
           <div className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
             {[
-              { icon: Timer, label: "3-min table timer" },
+              { icon: Timer, label: "2-min table timer" },
               { icon: ChefHat, label: "Live kitchen board" },
               { icon: Receipt, label: "Bills without maths" },
             ].map(({ icon: Icon, label }) => (

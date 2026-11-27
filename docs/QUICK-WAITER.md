@@ -1,5 +1,7 @@
 # Waiter — quick guide
 
+Connect to Wi-Fi **The Chinese Chef** and open the DineSense app. The server is pre-filled as `http://192.168.1.43`.
+
 1. Open the DineSense icon. Enter your **PIN**.
 2. Tap **Sound is off — tap to start your shift** once. Keep the phone speaker on.
 3. **Next up** shows the one thing to do now. Tap **Acknowledge** when you are

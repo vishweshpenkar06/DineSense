@@ -17,7 +17,7 @@ about 45–90 minutes, most of it drawing camera zones and importing the menu.
 ## 1. Install
 
 ```bash
-git clone <your-repo> /opt/dinesense
+git clone https://github.com/vishweshpenkar06/DineSense.git /opt/dinesense
 cd /opt/dinesense
 sudo ./install.sh
 ```
@@ -31,9 +31,11 @@ The installer:
 5. exports Caddy's root certificate to `caddy-root.crt`;
 6. schedules a nightly 03:00 backup (14-day retention) when cron is available.
 
-Save the printed admin password and the URL (`https://<LAN-IP>`).
+Save the printed admin password and the URL. The shipped install uses `http://192.168.1.43`; reserve `.43` on the router. Staff phones join Wi-Fi **The Chinese Chef**.
 
-## 2. Trust the HTTPS certificate on staff devices
+## 2. Trust the HTTPS certificate on PWA devices
+
+The native Android APK uses plain HTTP on the restaurant Wi-Fi and needs no certificate. Its setup screen shows the Wi-Fi name **The Chinese Chef** and pre-fills `http://192.168.1.43`. Install the CA only for browser/PWA devices.
 
 The default setup uses Caddy's internal CA. On every phone/tablet, install
 `caddy-root.crt` as a trusted root certificate once. Detailed steps for Android,
@@ -45,10 +47,10 @@ iOS, Windows and macOS are in `docs/HTTPS.md`.
 
 ## 3. First-run setup wizard
 
-Open `https://<LAN-IP>/login`, choose **Admin password**, sign in, and follow
+Open `http://192.168.1.43/login`, choose **Admin password**, sign in, and follow
 `/setup`:
 
-1. Restaurant name, address, phone, GSTIN and bill footer.
+1. Restaurant profile is pre-filled as **The Chinese Chef**. Add address, phone, GSTIN, FSSAI and UPI details.
 2. The standard two-floor layout (Ground G1–G5 non-AC, First F1–F6 AC) or your
    own floors/tables.
 3. Cameras: add the RTSP URL, **Test connection**, save, then **Calibrate** each
@@ -56,8 +58,7 @@ Open `https://<LAN-IP>/login`, choose **Admin password**, sign in, and follow
 4. Menu: import the CSV/XLSX (`category,item,local_name,variant,price_ground,
    price_first,veg,needs_kitchen`).
 5. Staff: create the waiter, chef and receptionist with 4–6 digit PINs.
-6. Timers/tax: the decision timer defaults to **120 seconds**; set the tax rate
-   and mode the accountant gave you.
+6. Timers/tax: the decision timer defaults to **120 seconds**. Set the GST rate/mode, service charge, HSN and business-day start the accountant gave you.
 7. Run the guided test (seated → alert → order → ready → served → paid) and
    finish. The test data removes itself.
 
@@ -73,9 +74,7 @@ docker compose logs -f web worker # tail app logs
 ./scripts/diagnostics.sh          # bundle logs/health for support
 ```
 
-Health: Admin → **Health** shows the database, worker tick, disk space, last
-backup, clock skew and camera status. The reception screen warns when the system
-is unhealthy.
+Health: Admin → **Health** shows the database, worker tick, disk space, last backup, clock skew and camera status. Admin → **Day close** records counted cash and variance against paid bills. The reception screen warns when the system is unhealthy.
 
 ### Power cuts
 
@@ -119,7 +118,7 @@ you to restore the pre-update backup if the migration changed data.
 
 | Symptom | Check |
 |---|---|
-| Phones cannot open the site | Same Wi-Fi? AP/client isolation off? Correct LAN IP (`./scripts/lan-ip.sh`)? |
+| Phones cannot open the site | On Wi-Fi **The Chinese Chef**? AP/client isolation off? Server `http://192.168.1.43`? Run `./scripts/lan-ip.sh`. |
 | Certificate warning | Install `caddy-root.crt` (docs/HTTPS.md) |
 | Cameras offline | RTSP URL reachable from the mini PC? Admin → Cameras → Test; `docker compose logs vision` |
 | No alerts | Waiter tapped “Start shift” (sound on)? Worker healthy in Admin → Health? |

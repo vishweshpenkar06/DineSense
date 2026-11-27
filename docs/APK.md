@@ -7,7 +7,7 @@ DineSense has two mobile paths:
 2. **PWA / TWA:** install the web app from Chrome, or package the PWA as a Trusted Web
    Activity later if a trusted public HTTPS hostname is available.
 
-The server still runs on the mini PC; the APK is not a copy of the database.
+The server still runs on the mini PC; the APK is not a copy of the database. Staff phones join Wi-Fi **The Chinese Chef**. The setup screen names that Wi-Fi and needs no HTTPS certificate.
 
 ## Ready APK
 
@@ -18,11 +18,10 @@ version: 1.2.0 (3)
 minSdk: 26 (Android 8)
 targetSdk: 35
 signing: release keystore on this machine
+wifi: The Chinese Chef
 ```
 
-Install it on the phone (allow install from this source), open it, and enter the
-server address. The first-launch form is pre-filled with `http://192.168.1.43`; tap
-**Open DineSense**. The phone must be on the restaurant Wi-Fi.
+Install it on the phone (allow install from this source). Connect to Wi-Fi **The Chinese Chef**, open the app, and tap **Open DineSense**. The setup screen is pre-filled with `http://192.168.1.43` and explains which Wi-Fi to use.
 
 Smoke-tested in an Android 15 emulator: server setup, web login, WebView rendering,
 native pickup notification and the in-app pickup toast. Physical-phone and printer
@@ -60,31 +59,16 @@ without rebuilding the APK. Rebuild the APK only when shell/native capabilities 
 Prerequisites: JDK 17 and Android SDK 35 (command-line tools are enough).
 
 ```bash
-# On this machine the tools live under ~/.local/opt/
-export JAVA_HOME="$HOME/.local/opt/jdk17"
-export ANDROID_HOME="$HOME/.local/opt/android-sdk"
-printf 'sdk.dir=%s\n' "$ANDROID_HOME" > apps/android/local.properties
-
-cd apps/android
-./gradlew assembleRelease
+./scripts/build-android.sh
 ```
 
-The signed APK is written to
-`apps/android/app/build/outputs/apk/release/app-release.apk`; copy it to
-`dist/DineSense.apk`.
+The script uses the local toolchain when available and writes the signed APK to `dist/DineSense.apk`. Gradle output also stays in `apps/android/app/build/outputs/apk/release/`.
 
-Release signing uses `apps/android/keystore.properties` (git-ignored) and the
-keystore at `~/.local/share/dinesense/dinesense-release.jks` on this machine. **Back
-up that keystore**; losing it prevents updating an installed APK in place. Do not
-commit the keystore or passwords.
-
-Without a signing config, `assembleDebug` still produces an installable debug APK.
+Release signing uses `apps/android/keystore.properties` (git-ignored) and the keystore at `~/.local/share/dinesense/dinesense-release.jks` on this machine. **Back up that keystore**; losing it prevents updating an installed APK in place. Do not commit the keystore or passwords.
 
 ## Server URL, trust and notifications
 
-- The shell defaults to `http://192.168.1.43`. HTTP works on the LAN and keeps the
-  first install simple. Use HTTPS (`https://...`) if the Caddy CA is installed on the
-  phone; the shell trusts user-installed CAs through `network_security_config.xml`.
+- The shell defaults to `http://192.168.1.43`. HTTP works on the LAN and needs no CA. If you change the server IP, update `DEFAULT_SERVER_URL` and rebuild the APK.
 - Native notifications require the Android notification permission. The app requests
   it on first launch; if denied, enable it in Android Settings → Apps → DineSense.
 - Notifications are local to the running shell; true web-push delivery when the app is

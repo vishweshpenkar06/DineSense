@@ -6,10 +6,10 @@ stages; the owner keeps paper as the legal backup until sign-off.
 ## Stage 0 — before service (1–2 hours)
 
 - Complete the setup wizard (`/setup`) and the guided test run.
-- Create all staff PINs and install the PWA on their devices.
+- Create all staff PINs. Install the native APK and connect each device to Wi-Fi **The Chinese Chef**; the setup screen needs no CA. Browser/PWA devices still need the CA.
 - Print the quick guides; decide who keeps the paper pad.
-- Set **Admin → Settings → Shadow mode** ON. Staff screens show an amber “pilot
-  shadow mode” banner; orders, alerts and bills work normally.
+- Set **Admin → Settings → Shadow mode** ON. Staff screens show an amber “pilot shadow mode” banner; orders, alerts and bills work normally.
+- Leave `DEMO_ALLOW_ALL_ROLES=false`: each staff member signs in with their own PIN.
 
 ## Stage 1 — shadow mode (2–3 days)
 

@@ -1,5 +1,7 @@
 # Chef — quick guide
 
+Connect to Wi-Fi **The Chinese Chef** and open the DineSense app. The server is pre-filled as `http://192.168.1.43`.
+
 1. Open the DineSense icon and enter your **PIN**.
 2. Tap **Start shift** once for the chime and to keep the screen awake.
 3. Tickets arrive in **New**. Oldest is first; the age turns amber at 10 minutes

@@ -1,5 +1,6 @@
 # HTTPS on the restaurant LAN
 
+The native Android APK uses HTTP on the restaurant Wi-Fi and needs no CA. This guide is for browser and PWA devices.
 The PWA needs a **secure context** on phones and tablets. `http://192.168.x.x` is
 not secure: installation, wake lock and vibration will not work. `http://localhost`
 is treated as secure by browsers, so it is fine for development on the mini PC.
@@ -17,6 +18,8 @@ Two supported paths:
    certificate once. This is the default Phase 3 setup.
 
 ## Using the hotel/restaurant Wi-Fi
+
+The shipped Wi-Fi name is **The Chinese Chef**. Staff phones join that SSID; the mini PC should be wired to the same router.
 
 The mini PC and staff phones must be on the **same network**. That is the easiest
 option when the venue already has Wi-Fi:
@@ -83,20 +86,19 @@ survives an IP change); use that in `SITE_ADDRESS` and point it at the mini PC.
    - **macOS:** Keychain Access → System → drag the file in → double-click → Trust →
      Always Trust.
 
-5. Open `https://dinesense.local` (or `https://<LAN-IP>`) on each device, sign in,
+5. Open `https://192.168.1.43` (or the reserved LAN IP) on each device, sign in,
    and use “Add to Home Screen”. The app then runs standalone.
 
    **No CA on the phone yet?** Caddy also serves the app over plain HTTP on port 80
    (`http://<LAN-IP>/`) and the root certificate at `http://<LAN-IP>/ca.crt`. That
    lets a phone open the app immediately; use HTTPS for PWA install and for
-   `COOKIE_SECURE=true`. The fallback is LAN-only and does not redirect to HTTPS.
+   `COOKIE_SECURE=true`. The fallback is LAN-only and does not redirect to HTTPS. The native APK uses this fallback and needs no CA.
 
 6. Verify from a machine on the LAN:
 
    ```bash
-   curl -k https://dinesense.local/api/health
-   curl --cacert caddy-root.crt https://<LAN-IP>/api/health
-   openssl s_client -connect <LAN-IP>:443 -servername <LAN-IP> </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer
+   curl --cacert caddy-root.crt https://192.168.1.43/api/health
+   openssl s_client -connect 192.168.1.43:443 -servername 192.168.1.43 </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer
    ```
 
 ## Important

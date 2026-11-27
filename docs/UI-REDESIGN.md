@@ -1,5 +1,7 @@
 # DineSense — UI Redesign Plan
 
+> **Status:** U0 foundations are shipped. The live screens still use the warm-ink identity; phases U1–U7 below are pending. The 2026-11-27 app-screen direction is `framed-sheet` (light L-frame, white sheet, quiet KPIs, accent only on data/status); seed 216910756. The full direction artifact is local-only.
+
 > Purpose: make DineSense look and feel like a modern, professional product that a restaurant owner will pay for. This file is written for an AI coding agent. Do **one phase per session** (§6). Read §0–§5 for context, then do only the phase you are told.
 
 ---

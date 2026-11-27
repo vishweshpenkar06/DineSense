@@ -2,6 +2,8 @@
 
 > This is a **real product that will be sold and installed in a real restaurant**, not a demo. Everything below exists because the software must work on a busy Saturday night with bad Wi-Fi, a stressed waiter, and an owner who is not technical.
 
+> **Shipped note:** the installed build is branded **The Chinese Chef**, runs at `http://192.168.1.43` on Wi-Fi **The Chinese Chef**, and uses the native APK without a CA. GST/UPI/day close are shipped; see `README.md` for current status. This document remains the original requirements source.
+
 ---
 
 ## 0. Instructions to the AI coding agent (read first)
