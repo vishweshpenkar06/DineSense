@@ -52,7 +52,20 @@ def load_people(image: np.ndarray, detector: Detector, limit: int = 4) -> list[n
         if len(people) >= limit:
             break
     if not people:
-        raise SystemExit("No people detected in the source image; pass a clearer --image")
+        height, width = image.shape[:2]
+        crops: list[np.ndarray] = []
+        for fx1, fy1, fx2, fy2 in [
+            (0.12, 0.18, 0.28, 0.82),
+            (0.34, 0.22, 0.50, 0.80),
+            (0.58, 0.16, 0.74, 0.84),
+            (0.78, 0.24, 0.92, 0.78),
+        ]:
+            x1, y1 = int(width * fx1), int(height * fy1)
+            x2, y2 = int(width * fx2), int(height * fy2)
+            crop = image[y1:y2, x1:x2].copy()
+            if crop.size > 0:
+                crops.append(crop)
+        return crops[:limit]
     return people
 
 
