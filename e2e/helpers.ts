@@ -70,3 +70,22 @@ export async function kitchenTicketsFor(
     (ticket) => ticket.tableLabel === label && ticket.status !== "CANCELLED",
   ).length;
 }
+
+export async function waitForCameraSnapshots(request: APIRequestContext, timeout = 60_000): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const response = await request.get("/api/admin/cameras");
+        if (!response.ok()) return false;
+        const data = (await response.json()) as { cameras: Array<{ id: string }> };
+        if (data.cameras.length === 0) return false;
+        for (const camera of data.cameras) {
+          const frame = await request.get(`/api/admin/cameras/${camera.id}/frame.jpg`);
+          if (!frame.ok()) return false;
+        }
+        return true;
+      },
+      { timeout },
+    )
+    .toBe(true);
+}

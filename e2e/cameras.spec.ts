@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_PASSWORD, loginAdminApi, resetTables } from "./helpers";
+import { ADMIN_PASSWORD, loginAdminApi, resetTables, waitForCameraSnapshots } from "./helpers";
 
 test("owner calibrates a table zone and reviews detections and tuning", async ({
   page,
   request,
 }) => {
   await loginAdminApi(request);
+  await waitForCameraSnapshots(request);
   await resetTables(request);
 
   await page.goto("/login");
