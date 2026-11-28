@@ -42,6 +42,66 @@ export type BillTotals = {
 };
 
 export type PaymentInput = { amountPaise: number };
+export type PaymentTender = { method: "CASH" | "UPI" | "CARD"; amountPaise: number };
+export type AppliedPayment = {
+  method: "CASH" | "UPI" | "CARD";
+  tenderedPaise: number;
+  appliedPaise: number;
+  changePaise: number;
+};
+
+export function applyPayments(
+  payments: PaymentTender[],
+  totalPaise: number,
+): { payments: AppliedPayment[]; paidPaise: number; changePaise: number } {
+  const nonCashTotal = payments
+    .filter((payment) => payment.method !== "CASH")
+    .reduce((sum, payment) => sum + Math.round(payment.amountPaise), 0);
+  if (nonCashTotal > totalPaise) {
+    throw new RangeError("Non-cash payments cannot exceed the bill total");
+  }
+
+  const cashDue = totalPaise - nonCashTotal;
+  const cashTendered = payments
+    .filter((payment) => payment.method === "CASH")
+    .reduce((sum, payment) => sum + Math.round(payment.amountPaise), 0);
+  if (cashTendered < cashDue) {
+    throw new RangeError("Cash tendered is less than the amount due");
+  }
+
+  let remainingCash = cashDue;
+  const applied: AppliedPayment[] = payments.map((payment) => {
+    const tenderedPaise = Math.round(payment.amountPaise);
+    if (!Number.isFinite(tenderedPaise) || tenderedPaise <= 0) {
+      throw new RangeError("Payment amounts must be greater than zero");
+    }
+    if (payment.method === "CASH") {
+      if (remainingCash <= 0) {
+        throw new RangeError("No cash is due on this bill");
+      }
+      const appliedPaise = Math.min(tenderedPaise, remainingCash);
+      remainingCash -= appliedPaise;
+      return {
+        method: payment.method,
+        tenderedPaise,
+        appliedPaise,
+        changePaise: tenderedPaise - appliedPaise,
+      };
+    }
+    return {
+      method: payment.method,
+      tenderedPaise,
+      appliedPaise: tenderedPaise,
+      changePaise: 0,
+    };
+  });
+
+  return {
+    payments: applied,
+    paidPaise: applied.reduce((sum, payment) => sum + payment.appliedPaise, 0),
+    changePaise: applied.reduce((sum, payment) => sum + payment.changePaise, 0),
+  };
+}
 
 export function roundToRupee(paise: number): number {
   return Math.round(paise / 100) * 100;

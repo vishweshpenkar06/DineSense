@@ -381,11 +381,12 @@ model BillAdjustment {
 }
 
 model Payment {
-  id          String        @id @default(uuid())
-  billId      String
-  method      PaymentMethod
-  amountPaise Int
-  createdAt   DateTime      @default(now())
+  id            String        @id @default(uuid())
+  billId        String
+  method        PaymentMethod
+  amountPaise   Int
+  tenderedPaise Int?
+  createdAt     DateTime      @default(now())
 
   bill Bill @relation(fields: [billId], references: [id])
 }

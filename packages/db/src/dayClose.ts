@@ -40,6 +40,16 @@ export async function getDayClose(date?: string | null): Promise<DayCloseDto> {
   const businessDay = date ?? businessDateString(new Date(), settings.BUSINESS_DAY_START);
   const expected = await computeExpected(businessDay);
   const close = await prisma.dayClose.findUnique({ where: { businessDay: expected.startUtc } });
+  let changedSinceClose = false;
+  if (close) {
+    const paidAfter = await prisma.bill.count({
+      where: { status: "PAID", paidAt: { gt: close.createdAt } },
+    });
+    const reopenedAfter = await prisma.auditLog.count({
+      where: { action: "bill.reopened", createdAt: { gt: close.createdAt } },
+    });
+    changedSinceClose = paidAfter > 0 || reopenedAfter > 0;
+  }
   return {
     businessDay: expected.from,
     expectedCashPaise: expected.expectedCashPaise,
@@ -50,6 +60,7 @@ export async function getDayClose(date?: string | null): Promise<DayCloseDto> {
     note: close?.note ?? null,
     closedAt: close?.createdAt.toISOString() ?? null,
     closedById: close?.closedById ?? null,
+    changedSinceClose,
   };
 }
 

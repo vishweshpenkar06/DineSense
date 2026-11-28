@@ -1,6 +1,42 @@
 import { expect, test } from "@playwright/test";
 import { RECEPTIONIST_PIN, WAITER_PIN, addFirstVariant, loginAdminApi, loginPin, openTableOrder, resetTables } from "./helpers";
 
+test("overpaid cash prints tender and change", async ({ browser, request }) => {
+  await loginAdminApi(request);
+  await resetTables(request);
+
+  const waiterContext = await browser.newContext();
+  const waiter = await waiterContext.newPage();
+  await loginPin(waiter, WAITER_PIN);
+  await openTableOrder(waiter, "G5");
+  await addFirstVariant(waiter);
+  await waiter.getByRole("button", { name: "Send to kitchen" }).click();
+  await waiter.waitForURL(/\/waiter$/);
+
+  const receptionContext = await browser.newContext();
+  const reception = await receptionContext.newPage();
+  await loginPin(reception, RECEPTIONIST_PIN);
+  await expect(reception).toHaveURL(/\/reception$/);
+  await reception.getByRole("button", { name: /G5/ }).first().click();
+
+  const openData = (await (await request.get("/api/bills/open")).json()) as {
+    sessions: Array<{ tableLabel: string | null; totalPaise: number }>;
+  };
+  const total = openData.sessions.find((row) => row.tableLabel === "G5")?.totalPaise ?? 0;
+  expect(total).toBeGreaterThan(0);
+  const tenderPaise = 50000;
+  await reception.getByLabel("Cash ₹").fill((tenderPaise / 100).toFixed(2));
+  await reception.getByRole("button", { name: "Take payment & close" }).click();
+  await expect(reception.locator(".bill-print")).toContainText("PAID");
+  await expect(reception.locator(".bill-print")).toContainText(`tendered ₹${(tenderPaise / 100).toFixed(2)}`);
+  await expect(reception.locator(".bill-print")).toContainText(
+    new RegExp(`Change\\s*₹${((tenderPaise - total) / 100).toFixed(2).replace(".", "\\.")}`),
+  );
+
+  await waiterContext.close();
+  await receptionContext.close();
+});
+
 test("reception adds extras, discounts, splits payment and prints", async ({
   browser,
   request,

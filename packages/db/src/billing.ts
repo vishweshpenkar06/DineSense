@@ -1,5 +1,6 @@
 import {
   IST_OFFSET_MS,
+  applyPayments,
   calculateBill,
   formatBillNumber,
   percentOf,
@@ -148,12 +149,15 @@ function mapPayment(payment: {
   id: string;
   method: string;
   amountPaise: number;
+  tenderedPaise: number | null;
   createdAt: Date;
 }): BillPaymentDto {
   return {
     id: payment.id,
     method: payment.method as BillPaymentDto["method"],
     amountPaise: payment.amountPaise,
+    tenderedPaise: payment.tenderedPaise,
+    changePaise: Math.max(0, (payment.tenderedPaise ?? payment.amountPaise) - payment.amountPaise),
     createdAt: payment.createdAt.toISOString(),
   };
 }
@@ -587,7 +591,7 @@ export async function payBill(input: {
     await persistBill(tx, bill.id, charges.totals, settings, charges.adjustments);
     const totalPaise = charges.totals.totalPaise;
 
-    const payments = input.payments.map((payment) => {
+    const tenders = input.payments.map((payment) => {
       if (!["CASH", "UPI", "CARD"].includes(payment.method)) {
         throw new DomainError("Unknown payment method");
       }
@@ -595,23 +599,31 @@ export async function payBill(input: {
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new DomainError("Payment amounts must be greater than zero");
       }
-      return { method: payment.method, amountPaise: amount };
+      return { method: payment.method as "CASH" | "UPI" | "CARD", amountPaise: amount };
     });
-
-    const paidPaise = payments.reduce((sum, payment) => sum + payment.amountPaise, 0);
-    if (totalPaise > 0 && paidPaise < totalPaise) {
-      throw new DomainError("Payments do not cover the bill total");
-    }
-    if (totalPaise > 0 && payments.length === 0) {
+    if (totalPaise > 0 && tenders.length === 0) {
       throw new DomainError("Add at least one payment");
     }
+    let allocation: ReturnType<typeof applyPayments>;
+    try {
+      allocation = applyPayments(tenders, totalPaise);
+    } catch (caught) {
+      if (caught instanceof RangeError) throw new DomainError(caught.message);
+      throw caught;
+    }
 
-    for (const payment of payments) {
+    for (const payment of allocation.payments) {
       await tx.payment.create({
-        data: { billId: bill.id, method: payment.method, amountPaise: payment.amountPaise },
+        data: {
+          billId: bill.id,
+          method: payment.method,
+          amountPaise: payment.appliedPaise,
+          tenderedPaise: payment.tenderedPaise,
+        },
       });
     }
 
+    const paidPaise = allocation.paidPaise;
     await tx.bill.update({
       where: { id: bill.id },
       data: { status: "PAID", paidAt: now, finalizedById: input.actorId ?? null },
@@ -642,11 +654,11 @@ export async function payBill(input: {
         action: "bill.paid",
         entity: "bill",
         entityId: bill.id,
-        detail: { totalPaise, payments },
+        detail: { totalPaise, payments: allocation.payments },
       },
     });
 
-    return { applied, totalPaise, paidPaise };
+    return { applied, totalPaise, paidPaise, changePaise: allocation.changePaise };
   });
 
   await notify("bill.updated", { sessionId: input.sessionId, status: "PAID" });
@@ -656,7 +668,7 @@ export async function payBill(input: {
     bill,
     totalPaise: result.totalPaise,
     paidPaise: result.paidPaise,
-    changePaise: Math.max(0, result.paidPaise - result.totalPaise),
+    changePaise: result.changePaise,
   };
 }
 

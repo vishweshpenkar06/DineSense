@@ -609,9 +609,22 @@ export default function ReceptionPage() {
                 <>
                   <hr />
                   {bill.bill.payments.map((payment) => (
-                    <div key={payment.id} style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>{payment.method}</span>
-                      <span className="amount">{money(payment.amountPaise)}</span>
+                    <div key={payment.id}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span>
+                          {payment.method}
+                          {payment.tenderedPaise !== null && payment.tenderedPaise !== payment.amountPaise
+                            ? ` (tendered ${money(payment.tenderedPaise)})`
+                            : ""}
+                        </span>
+                        <span className="amount">{money(payment.amountPaise)}</span>
+                      </div>
+                      {payment.changePaise > 0 ? (
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>Change</span>
+                          <span className="amount">{money(payment.changePaise)}</span>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </>

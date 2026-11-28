@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyPayments,
   calculateBill,
   formatBillNumber,
   isBillPaid,
@@ -166,6 +167,48 @@ describe("payments", () => {
     expect(paidTotal(payments)).toBe(21200);
     expect(isBillPaid(payments, 21200)).toBe(true);
     expect(isBillPaid([{ amountPaise: 10000 }], 21200)).toBe(false);
-    expect(isBillPaid([{ amountPaise: 22000 }], 21200)).toBe(true);
+    expect(isBillPaid([{ amountPaise: 21200 }], 21200)).toBe(true);
+  });
+
+  it("stores applied cash and change separately from tendered cash", () => {
+    const result = applyPayments([{ method: "CASH", amountPaise: 50000 }], 18000);
+    expect(result.payments).toEqual([
+      { method: "CASH", tenderedPaise: 50000, appliedPaise: 18000, changePaise: 32000 },
+    ]);
+    expect(result.paidPaise).toBe(18000);
+    expect(result.changePaise).toBe(32000);
+  });
+
+  it("applies non-cash first and allocates the remaining cash", () => {
+    const result = applyPayments(
+      [
+        { method: "UPI", amountPaise: 8000 },
+        { method: "CASH", amountPaise: 15000 },
+      ],
+      18000,
+    );
+    expect(result.payments).toEqual([
+      { method: "UPI", tenderedPaise: 8000, appliedPaise: 8000, changePaise: 0 },
+      { method: "CASH", tenderedPaise: 15000, appliedPaise: 10000, changePaise: 5000 },
+    ]);
+    expect(result.changePaise).toBe(5000);
+  });
+
+  it("rejects non-cash overpayment and insufficient cash", () => {
+    expect(() => applyPayments([{ method: "UPI", amountPaise: 22000 }], 18000)).toThrow(
+      /non-cash/i,
+    );
+    expect(() => applyPayments([{ method: "CASH", amountPaise: 10000 }], 18000)).toThrow(
+      /cash/i,
+    );
+    expect(() =>
+      applyPayments(
+        [
+          { method: "UPI", amountPaise: 18000 },
+          { method: "CASH", amountPaise: 1000 },
+        ],
+        18000,
+      ),
+    ).toThrow(/cash/i);
   });
 });

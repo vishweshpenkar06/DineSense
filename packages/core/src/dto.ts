@@ -223,6 +223,8 @@ export type BillPaymentDto = {
   id: string;
   method: "CASH" | "UPI" | "CARD";
   amountPaise: number;
+  tenderedPaise: number | null;
+  changePaise: number;
   createdAt: string;
 };
 
@@ -541,4 +543,5 @@ export type DayCloseDto = {
   note: string | null;
   closedAt: string | null;
   closedById: string | null;
+  changedSinceClose: boolean;
 };

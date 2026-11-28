@@ -130,6 +130,9 @@ export function DayClosePanel() {
 
           <form className={`${CARD} space-y-3`} onSubmit={(event) => void save(event)}>
             <h3 className="text-sm font-semibold text-ink">Count the drawer</h3>
+            {data.changedSinceClose ? (
+              <p className="text-xs text-coral">Changed since close. Review this day again.</p>
+            ) : null}
             <label className="block text-xs text-muted">
               Counted cash (₹)
               <input

@@ -981,6 +981,71 @@ check(
 );
 await resetRuntime();
 
+await resetRuntime();
+await sim("occupied");
+await placeOrder({
+  tableId,
+  items: [{ variantId, qty: 2 }],
+  clientKey: randomUUID(),
+});
+const overpaySession = await openSession();
+if (!overpaySession) throw new Error("overpayment test session missing");
+const overpayBill = await getBillView(overpaySession.id);
+const overpayTotal = overpayBill.draft.totalPaise;
+const overpaid = await payBill({
+  sessionId: overpaySession.id,
+  payments: [{ method: "CASH", amountPaise: 50000 }],
+  actorId: receptionUser.id,
+});
+const storedCash = await prisma.payment.findFirstOrThrow({
+  where: { bill: { sessionId: overpaySession.id } },
+});
+check(
+  "cash payment stores only the applied amount",
+  overpayTotal === 18000 &&
+    storedCash.amountPaise === overpayTotal &&
+    storedCash.tenderedPaise === 50000 &&
+    overpaid.changePaise === 32000,
+  `total=${overpayTotal} applied=${storedCash.amountPaise} tendered=${storedCash.tenderedPaise} change=${overpaid.changePaise}`,
+);
+const cashAfterOverpay = await getDayClose();
+const appliedCashSum = (
+  await prisma.payment.aggregate({
+    where: { method: "CASH", bill: { status: "PAID" } },
+    _sum: { amountPaise: true },
+  })
+)._sum.amountPaise ?? 0;
+check(
+  "day close cash equals applied payments, not tender",
+  cashAfterOverpay.expectedCashPaise === appliedCashSum,
+  `expected=${cashAfterOverpay.expectedCashPaise} applied=${appliedCashSum}`,
+);
+check(
+  "day close reports changes after closing",
+  cashAfterOverpay.changedSinceClose === true,
+);
+
+await resetRuntime();
+await sim("occupied");
+await placeOrder({
+  tableId,
+  items: [{ variantId, qty: 1 }],
+  clientKey: randomUUID(),
+});
+const upiSession = await openSession();
+if (!upiSession) throw new Error("UPI test session missing");
+let upiOverpayRejected = false;
+try {
+  await payBill({
+    sessionId: upiSession.id,
+    payments: [{ method: "UPI", amountPaise: 22000 }],
+    actorId: receptionUser.id,
+  });
+} catch {
+  upiOverpayRejected = true;
+}
+check("UPI overpayment is rejected", upiOverpayRejected);
+
 const settingsResult = await updateAdminSettings({
   settings: { DECIDE_WINDOW_S: 240, TAX_RATE_PERCENT: 5, TAX_MODE: "exclusive" },
   actorId: adminUser.id,
