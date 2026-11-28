@@ -30,16 +30,21 @@ export function getJson<T>(url: string): Promise<T> {
   return apiFetch<T>(url, { cache: "no-store" });
 }
 
-export function postJson<T>(url: string, body?: unknown): Promise<T> {
+export function postJson<T>(url: string, body?: unknown, timeoutMs = 8000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   return apiFetch<T>(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer));
 }
 
 export function isRetryable(error: unknown): boolean {
-  if (error instanceof HttpError) return error.status >= 500 || error.status === 429;
+  if (error instanceof HttpError) {
+    return error.status === 401 || error.status === 408 || error.status === 429 || error.status >= 500;
+  }
   return true;
 }
 

@@ -4,7 +4,7 @@ import type { MenuCategoryDto, MenuItemDto, MenuVariantDto, OrderContextResponse
 import { BrandMark } from "@/components/brand";
 import { ConnectionBadge } from "@/components/connection-badge";
 import { errorMessage, getJson, isRetryable, postJson } from "@/lib/client";
-import { enqueuePending } from "@/lib/offline-orders";
+import { enqueuePending, moveToFailed, REOPEN_CART_KEY, type PendingOrderItem } from "@/lib/offline-orders";
 import type { StreamStatus } from "@/lib/live";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 
 type CartLine = {
@@ -108,6 +109,7 @@ function OrderScreen() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [orderNote, setOrderNote] = useState("");
   const [lastLineKey, setLastLineKey] = useState<string | null>(null);
+  const [clientKey, setClientKey] = useState(() => newClientKey());
   const [sending, setSending] = useState(false);
   const [stream, setStream] = useState<StreamStatus>("connecting");
   const [query, setQuery] = useState("");
@@ -131,6 +133,50 @@ function OrderScreen() {
     }
     void load();
   }, [tableId, sessionId, load]);
+
+  useEffect(() => {
+    if (!context || typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(REOPEN_CART_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as {
+        clientKey?: string;
+        items?: PendingOrderItem[];
+        note?: string;
+      };
+      const variants = new Map(
+        context.menu.categories.flatMap((category) =>
+          category.items.flatMap((item) =>
+            item.variants.map((variant) => [variant.id, { item, variant }] as const),
+          ),
+        ),
+      );
+      const lines = (saved.items ?? []).flatMap((entry) => {
+        const found = variants.get(entry.variantId);
+        if (!found || found.variant.pricePaise === null) return [];
+        return [
+          {
+            key: found.variant.id,
+            variantId: found.variant.id,
+            name: found.item.name,
+            variant: found.variant.label,
+            pricePaise: found.variant.pricePaise,
+            qty: entry.qty,
+            note: entry.note ?? "",
+          },
+        ];
+      });
+      if (lines.length > 0) {
+        setCart(lines);
+        setOrderNote(saved.note ?? "");
+        if (saved.clientKey) setClientKey(saved.clientKey);
+        toast.success("Failed order reopened as a cart");
+      }
+      window.localStorage.removeItem(REOPEN_CART_KEY);
+    } catch {
+      window.localStorage.removeItem(REOPEN_CART_KEY);
+    }
+  }, [context]);
 
   useEffect(() => {
     const source = new EventSource("/api/stream");
@@ -228,7 +274,7 @@ function OrderScreen() {
     const payload = {
       sessionId: context.session.id,
       tableId: context.table?.id,
-      clientKey: newClientKey(),
+      clientKey,
       note: orderNote.trim() || undefined,
       items: cart.map((line) => ({
         variantId: line.variantId,
@@ -242,11 +288,20 @@ function OrderScreen() {
       router.push("/waiter");
     } catch (caught) {
       if (isRetryable(caught)) {
-        enqueuePending({ ...payload, label, createdAt: new Date().toISOString() });
-        router.push("/waiter");
+        try {
+          enqueuePending({ ...payload, label, createdAt: new Date().toISOString() });
+          router.push("/waiter");
+        } catch {
+          setError("Could not save this order on this device. Keep this screen open and try again.");
+        }
         return;
       }
-      setError(errorMessage(caught));
+      try {
+        moveToFailed({ ...payload, label, createdAt: new Date().toISOString() }, errorMessage(caught));
+        router.push("/waiter");
+      } catch {
+        setError("Could not save this failed order on this device. Keep this screen open.");
+      }
     } finally {
       setSending(false);
     }

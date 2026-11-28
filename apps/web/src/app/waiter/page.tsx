@@ -6,7 +6,6 @@ import { ShiftBar } from "@/components/shift-bar";
 import type { SnapshotTable, SnapshotTask } from "@dinesense/core";
 import { errorMessage, postJson } from "@/lib/client";
 import { useSnapshotLive } from "@/lib/live";
-import { readPending, removePending, type PendingOrder } from "@/lib/offline-orders";
 import {
   getNotificationState,
   requestNotificationPermission,
@@ -52,7 +51,6 @@ export default function WaiterPage() {
   const { snapshot, stream, unauthorized, error, refresh, serverNowMs, setError } = useSnapshotLive();
   const shift = useShift();
   const [busy, setBusy] = useState<string | null>(null);
-  const [pending, setPending] = useState<PendingOrder[]>([]);
   const [lastZone, setLastZone] = useState<string | null>(null);
   const [notificationState, setNotificationState] = useState<NotificationState>("default");
   const seenAlerts = useRef(new Set<string>());
@@ -95,45 +93,6 @@ export default function WaiterPage() {
     }
     await shift.start();
   }
-
-  const flushPending = useCallback(async () => {
-    const queued = readPending();
-    for (const order of queued) {
-      try {
-        await postJson("/api/orders", {
-          tableId: order.tableId,
-          sessionId: order.sessionId,
-          clientKey: order.clientKey,
-          note: order.note,
-          items: order.items,
-        });
-        removePending(order.clientKey);
-      } catch (caught) {
-        setError(errorMessage(caught));
-        removePending(order.clientKey);
-      }
-    }
-    setPending(readPending());
-    await refresh();
-  }, [refresh, setError]);
-
-  useEffect(() => {
-    const sync = () => setPending(readPending());
-    sync();
-    window.addEventListener("dinesense:pending", sync);
-    const onOnline = () => {
-      if (readPending().length > 0) void flushPending();
-    };
-    window.addEventListener("online", onOnline);
-    const timer = setInterval(() => {
-      if (readPending().length > 0 && navigator.onLine) void flushPending();
-    }, 5000);
-    return () => {
-      window.removeEventListener("dinesense:pending", sync);
-      window.removeEventListener("online", onOnline);
-      clearInterval(timer);
-    };
-  }, [flushPending]);
 
   useEffect(() => {
     if (!snapshot) return;
@@ -239,16 +198,6 @@ export default function WaiterPage() {
           <h1 className="font-display text-2xl">Floor</h1>
           <ConnectionBadge status={stream} />
         </header>
-        {pending.length > 0 ? (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent/[0.06] px-4 py-3 text-sm text-accent">
-            <span>
-              {pending.length} order{pending.length === 1 ? "" : "s"} queued — will send when online
-            </span>
-            <button type="button" className={BTN} onClick={() => void flushPending()} disabled={busy !== null}>
-              Retry now
-            </button>
-          </div>
-        ) : null}
         <p className="flex items-center gap-2 text-sm text-muted">
           <RefreshCw className="h-4 w-4 animate-spin text-accent" /> Loading the floor…
           {stream === "reconnecting"
@@ -360,17 +309,6 @@ export default function WaiterPage() {
       {error ? (
         <div className="mt-3 rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
           {error}
-        </div>
-      ) : null}
-
-      {pending.length > 0 ? (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent/[0.06] px-4 py-3 text-sm text-accent">
-          <span>
-            {pending.length} order{pending.length === 1 ? "" : "s"} queued — will send when online
-          </span>
-          <button type="button" className={BTN} onClick={() => void flushPending()} disabled={busy !== null}>
-            Retry now
-          </button>
         </div>
       ) : null}
 

@@ -247,6 +247,27 @@ check(
 check("first order timestamp is recorded", afterOrderSession.firstOrderAt !== null);
 check("KOT number is assigned", placed.kotNumber >= 1, `KOT ${placed.kotNumber}`);
 
+const concurrentKey = randomUUID();
+const concurrent = await Promise.allSettled([
+  placeOrder({ tableId, items: [{ variantId, qty: 1 }], clientKey: concurrentKey }),
+  placeOrder({ tableId, items: [{ variantId, qty: 1 }], clientKey: concurrentKey }),
+]);
+check(
+  "two concurrent orders with one clientKey both succeed",
+  concurrent.every((entry) => entry.status === "fulfilled"),
+  concurrent.map((entry) => entry.status).join(","),
+);
+check(
+  "concurrent duplicate returns the same order",
+  concurrent[0].status === "fulfilled" &&
+    concurrent[1].status === "fulfilled" &&
+    concurrent[0].value.orderId === concurrent[1].value.orderId,
+);
+check(
+  "only one order row exists for the concurrent clientKey",
+  (await prisma.order.count({ where: { clientKey: concurrentKey } })) === 1,
+);
+
 // 4. Duplicate vision events are idempotent.
 await resetRuntime();
 const sharedEventId = randomUUID();

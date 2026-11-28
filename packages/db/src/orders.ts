@@ -156,9 +156,23 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }
 
     return { orderId: order.id, kotNumber, sessionId: session.id, tableId, applied };
-  }).catch((error: unknown) => {
+  }).catch(async (error: unknown) => {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new ConflictError("Duplicate order (same clientKey)");
+      const existing = await prisma.order.findUnique({
+        where: { clientKey: input.clientKey },
+        select: { id: true, kotNumber: true, sessionId: true, session: { select: { tableId: true } } },
+      });
+      if (existing) {
+        return {
+          orderId: existing.id,
+          kotNumber: existing.kotNumber,
+          sessionId: existing.sessionId,
+          tableId: existing.session.tableId,
+          duplicate: true,
+          applied: null,
+        };
+      }
+      throw new ConflictError("Duplicate order number");
     }
     throw error;
   });

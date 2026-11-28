@@ -45,6 +45,75 @@ test("waiter → chef → waiter → bill across two devices", async ({ browser,
   await chefContext.close();
 });
 
+test("queued order survives a failed flush while online", async ({ browser, request }) => {
+  await loginAdminApi(request);
+  await resetTables(request);
+
+  const waiterContext = await browser.newContext();
+  const waiter = await waiterContext.newPage();
+  await loginPin(waiter, WAITER_PIN);
+  await openTableOrder(waiter, "G4");
+  await addFirstVariant(waiter);
+
+  await waiterContext.route("**/api/orders", (route) =>
+    route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "server down" }) }),
+  );
+  await waiter.getByRole("button", { name: "Send to kitchen" }).click();
+  await waiter.waitForURL(/\/waiter$/);
+  await expect(waiter.getByText(/^\d+ orders? queued/)).toBeVisible({ timeout: 10_000 });
+  await waiter.waitForTimeout(2_000);
+  await expect(waiter.getByText(/^\d+ orders? queued/)).toBeVisible();
+
+  await waiterContext.unroute("**/api/orders");
+  await waiter.getByRole("button", { name: "Retry now" }).click();
+  await expect.poll(() => kitchenTicketsFor(request, "G4"), { timeout: 25_000 }).toBe(1);
+
+  await waiterContext.close();
+});
+
+test("401 while queued asks the waiter to sign in and keeps the order", async ({ browser, request }) => {
+  await loginAdminApi(request);
+  await resetTables(request);
+
+  const waiterContext = await browser.newContext();
+  const waiter = await waiterContext.newPage();
+  await loginPin(waiter, WAITER_PIN);
+  await openTableOrder(waiter, "G2");
+  await addFirstVariant(waiter);
+
+  await waiterContext.route("**/api/orders", (route) =>
+    route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Sign in required" }) }),
+  );
+  await waiter.getByRole("button", { name: "Send to kitchen" }).click();
+  await waiter.waitForURL(/\/waiter$/);
+  await expect(waiter.getByText(/sign in again|sign in to send/i)).toBeVisible({ timeout: 10_000 });
+  await expect(waiter.getByText(/^\d+ orders? queued/)).toBeVisible();
+
+  await waiterContext.close();
+});
+
+test("permanent order rejection moves the order to failed orders", async ({ browser, request }) => {
+  await loginAdminApi(request);
+  await resetTables(request);
+
+  const waiterContext = await browser.newContext();
+  const waiter = await waiterContext.newPage();
+  await loginPin(waiter, WAITER_PIN);
+  await openTableOrder(waiter, "G1");
+  await addFirstVariant(waiter);
+
+  await waiterContext.route("**/api/orders", (route) =>
+    route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: "Visit is closed" }) }),
+  );
+  await waiter.getByRole("button", { name: "Send to kitchen" }).click();
+  await waiter.waitForURL(/\/waiter$/);
+  await expect(waiter.getByText("Failed orders")).toBeVisible({ timeout: 10_000 });
+  await expect(waiter.getByText("Visit is closed")).toBeVisible();
+  await expect(waiter.getByText(/^\d+ orders? queued/)).toHaveCount(0);
+
+  await waiterContext.close();
+});
+
 test("offline order is queued and sent exactly once", async ({ browser, request }) => {
   await loginAdminApi(request);
   await resetTables(request);
