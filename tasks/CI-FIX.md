@@ -24,6 +24,10 @@ A second fresh-database-only failure appeared after fixing the migration: the fu
 
 After the migration fix, `e2e` still failed on `cameras.spec.ts` and the camera role test because the tests started before the vision service had produced its first snapshot; the snapshot route returned 404. Added `waitForCameraSnapshots()` to the E2E helpers and a service-health wait step to the workflow.
 
+## Third CI failure
+
+`zones.json` is git-ignored and is generated locally by `make_demo.py`. CI never generated it, so the vision service had no cameras and every frame request returned 404. Added a CI step to generate demo videos/zones from the seeded app config and restart vision. Fixed `make_demo.py` defaults to use the bundled YOLOX model at 416px.
+
 ## Verification
 
 - Fresh DB `dinesense_test_ci`: migrate deploy → seed → acceptance **150/150**.

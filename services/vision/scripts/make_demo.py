@@ -223,9 +223,9 @@ def main() -> None:
         raise SystemExit(f"Could not read {image_path}")
 
     detector = Detector(
-        model_path=os.environ.get("YOLO_MODEL", "yolo11n.pt"),
+        model_path=os.environ.get("YOLO_MODEL", "/app/models/yolox_nano.onnx"),
         conf=float(os.environ.get("YOLO_CONF", "0.35")),
-        imgsz=int(os.environ.get("YOLO_IMGSZ", "640")),
+        imgsz=int(os.environ.get("YOLO_IMGSZ", "416")),
         device=os.environ.get("YOLO_DEVICE", "cpu"),
     )
     people = load_people(image, detector)

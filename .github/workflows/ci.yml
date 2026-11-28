@@ -93,6 +93,10 @@ jobs:
       - run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
       - run: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma
       - run: npm run db:seed -w @dinesense/db -- --force
+      - name: Generate demo camera files
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T vision python scripts/make_demo.py
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml restart vision
       - name: Wait for services
         run: |
           for i in $(seq 1 90); do
