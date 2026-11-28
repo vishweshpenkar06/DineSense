@@ -33,9 +33,9 @@ Service needs no cloud account. When the LAN goes down, queued waiter orders syn
 | **Reception** | Desktop | Settle bills, apply extras and discounts, void items, split cash/UPI/card, print 80 mm/A4 receipts, void or reopen with audit |
 | **Owner** | Desktop/phone | Manage menu, floors, tables, staff, timers, tax, UPI, daily cash close, reports, cameras, health, backups and pilot review |
 
-**Core rule:** when someone seats a table, the system stores a 120-second deadline in Postgres. If no order exists when it expires, the worker raises a priority waiter task. Camera events never auto-free ordered or unpaid visits.
+**Core rule:** when someone seats a table, the system stores a 180-second deadline in Postgres. If no order exists when it expires, the worker raises a priority waiter task. Camera events never auto-free ordered or unpaid visits.
 
-**Billing:** Goods and Services Tax (GST) per category or dish, Harmonized System of Nomenclature (HSN) on items, service charge, inclusive/exclusive tax, round-off, Food Safety and Standards Authority of India (FSSAI) details, generated Unified Payments Interface (UPI) QR or uploaded shop QR, manual payment confirmation, cash close variance and a GST report. Service needs no cloud account.
+**Billing:** Goods and Services Tax (GST) per category or dish, Harmonized System of Nomenclature (HSN) on items, no mandatory service charge, inclusive/exclusive tax, round-off, Food Safety and Standards Authority of India (FSSAI) details, generated Unified Payments Interface (UPI) QR or uploaded shop QR, manual payment confirmation, cash close variance and a GST report. Service needs no cloud account.
 
 ## Get running
 
@@ -94,14 +94,16 @@ Demo defaults (`admin123`, `1111`, `2222`, `3333`) apply only when the matching 
 
 | Check | Result |
 |---|---|
+| Web unit (`npm test -w @dinesense/web`) | **6/6** |
+| DB unit (`npm test -w @dinesense/db`) | **2/2** |
 | Typecheck | clean |
-| Core domain (`npm run test:core`) | **121/121** |
-| Database acceptance (`npm run acceptance`) | **122/122** |
-| Vision service (`pytest`) | **36/36** |
-| Playwright (`npm run test:e2e`) | **9/9** |
-| Production smoke | health `200`, role checks `403`, dev routes `404`, HTTPS with CA `200` |
+| Core domain (`npm run test:core`) | **140/140** |
+| Database acceptance (`npm run acceptance`) | **150/150** |
+| Vision service (`pytest`) | **38/38** |
+| Playwright (`npm run test:e2e`) | **22/22** |
+| Production smoke | health `200`, role checks `403`, dev routes `404`, only Caddy 80/443 exposed |
 
-The 120-item AC/non-AC menu imports with 235 variants and 470 floor prices, zero errors and zero warnings. The APK is signed and was smoke-tested in an Android 15 emulator. Physical printers, real Real Time Streaming Protocol (RTSP) cameras and physical phones remain on-site handover checks.
+The 120-item AC/non-AC menu imports with 235 variants and 470 floor prices, zero errors and zero warnings. The APK is signed and was smoke-tested in an Android 15 emulator. Detector uses bundled YOLOX ONNX with checksum; detection accuracy is not claimed without real footage. Physical printers, real Real Time Streaming Protocol (RTSP) cameras and physical phones remain on-site handover checks.
 
 ## Daily service flow
 
@@ -167,7 +169,7 @@ Copy [.env.example](.env.example) to `.env` and set real values. Keep `.env` pri
 | `SEED_ADMIN_PASSWORD` | Initial admin password | random/private |
 | `SEED_WAITER_PIN`, `SEED_CHEF_PIN`, `SEED_RECEPTIONIST_PIN` | Seed staff PINs | private; change later in Admin → Staff |
 
-Business defaults: decision timer **120 s**, business day starts **05:00 IST**, money uses integer paise, tax starts **0/exclusive**, service charge **0%**, bill numbers follow `DS-YYYY-NNNNNN`. Edit these in **Admin → Settings**.
+Business defaults: decision timer **180 s**, business day starts **05:00 IST**, money uses integer paise, tax starts **0/exclusive**, service charge forced to **0%**, bill numbers follow `PREFIX/YY-YY/NNNNN`. Edit these in **Admin → Settings**.
 
 ## Menu data
 
@@ -272,6 +274,7 @@ Dev-only routes under `/api/dev/*` return `404` when `ENABLE_DEV_CONSOLE=false`.
 
 ## Documentation
 
+- [Handover](docs/HANDOVER.md)
 - [Install guide](docs/INSTALL.md)
 - [Hardware and network](docs/HARDWARE.md)
 - [HTTPS and CA setup](docs/HTTPS.md)
