@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:core
+      - run: npm run build
+
+  acceptance:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dinesense
+          POSTGRES_PASSWORD: dinesense
+          POSTGRES_DB: dinesense_acceptance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dinesense -d dinesense_acceptance"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://dinesense:dinesense@localhost:5432/dinesense_acceptance?schema=public
+      ENCRYPTION_KEY: ci-encryption-key-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma
+      - run: npm run db:seed -w @dinesense/db -- --force
+      - run: npm run acceptance
+
+  vision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r services/vision/requirements.txt
+      - run: pytest -q
+        working-directory: services/vision
+
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_USER: dinesense
+      POSTGRES_PASSWORD: dinesense
+      POSTGRES_DB: dinesense
+      SESSION_SECRET: ci-session-secret-not-for-production
+      ENCRYPTION_KEY: ci-encryption-key-not-for-production
+      VISION_SHARED_SECRET: ci-vision-secret-not-for-production
+      SEED_ADMIN_PASSWORD: CiAdminPassword123
+      SEED_WAITER_PIN: "200281"
+      SEED_CHEF_PIN: "528677"
+      SEED_RECEPTIONIST_PIN: "533165"
+      E2E_ADMIN_PASSWORD: CiAdminPassword123
+      E2E_WAITER_PIN: "200281"
+      E2E_CHEF_PIN: "528677"
+      E2E_RECEPTIONIST_PIN: "533165"
+      ENABLE_DEV_CONSOLE: "true"
+      VISION_DEMO: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npx playwright install --with-deps chromium
+      - run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+      - run: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma
+      - run: npm run db:seed -w @dinesense/db -- --force
+      - run: npm run test:e2e
+      - if: always()
+        run: docker compose logs --tail=200

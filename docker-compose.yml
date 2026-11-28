@@ -16,6 +16,11 @@ x-app: &app
     dockerfile: Dockerfile
   environment: *app-env
   restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
 
 services:
   db:

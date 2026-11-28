@@ -18,9 +18,16 @@ android {
         applicationId = "com.dinesense.app"
         minSdk = 26
         targetSdk = 35
+        val serverUrl = System.getenv("DINESENSE_SERVER_URL") ?: "http://192.168.1.43"
+        val restaurantName = System.getenv("RESTAURANT_NAME") ?: "The Chinese Chef"
+        val wifiSsid = System.getenv("WIFI_SSID") ?: "The Chinese Chef"
+        resValue("string", "setup_subtitle", "$restaurantName · staff app")
+        resValue("string", "setup_help", "Connect your phone to Wi-Fi: $wifiSsid. Then open the app.")
+        buildConfigField("String", "RESTAURANT_NAME", "\"$restaurantName\"")
+        buildConfigField("String", "WIFI_SSID", "\"$wifiSsid\"")
         versionCode = 3
         versionName = "1.2.0"
-        buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://192.168.1.43\"")
+        buildConfigField("String", "DEFAULT_SERVER_URL", "\"$serverUrl\"")
     }
 
     buildFeatures {

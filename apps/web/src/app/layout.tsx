@@ -1,21 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import "@fontsource/manrope/400.css";
+import "@fontsource/manrope/500.css";
+import "@fontsource/manrope/600.css";
+import "@fontsource/manrope/700.css";
+import "@fontsource/fraunces/400.css";
+import "@fontsource/fraunces/500.css";
+import "@fontsource/fraunces/600.css";
 import "./globals.css";
 import { PwaRegister } from "./pwa-register";
 import { AppToaster } from "@/components/app-toaster";
 import { ThemeProvider, ThemeScript } from "@/components/theme-provider";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
-  display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "DineSense",
@@ -46,7 +40,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${manrope.variable} ${fraunces.variable}`}>
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-canvas font-sans text-ink antialiased">
         <ThemeScript />
         <ThemeProvider>

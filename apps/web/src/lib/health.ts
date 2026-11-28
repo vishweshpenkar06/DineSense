@@ -14,6 +14,8 @@ export type HealthSnapshot = {
   worker: { lastTick: string | null; healthy: boolean };
   disk: { freeBytes: number; totalBytes: number; freeGb: number } | null;
   lastBackupAt: string | null;
+  backupOffsite: boolean;
+  backupWarning: string | null;
   clockSkewMs: number | null;
   cameras: Array<{
     id: string;
@@ -81,6 +83,13 @@ export async function buildHealth(): Promise<HealthSnapshot> {
   )
     .then((value) => value.trim() || null)
     .catch(() => null);
+  const backupOffsite = Boolean(process.env.BACKUP_USB_PATH || process.env.BACKUP_RCLONE_REMOTE);
+  const backupStale = !lastBackupAt || Date.now() - new Date(lastBackupAt).getTime() > 24 * 60 * 60 * 1000;
+  const backupWarning = !backupOffsite
+    ? "No off-machine backup target configured"
+    : backupStale
+      ? "No backup in the last 24 hours"
+      : null;
 
   const serverNow = new Date();
   const clockSkewMs = databaseNow ? databaseNow.getTime() - serverNow.getTime() : null;
@@ -91,7 +100,8 @@ export async function buildHealth(): Promise<HealthSnapshot> {
     ok &&
     (diskWarning ||
       (clockSkewMs !== null && Math.abs(clockSkewMs) > 5_000) ||
-      cameras.some((camera) => camera.status === "OFFLINE"));
+      cameras.some((camera) => camera.status === "OFFLINE") ||
+      backupWarning !== null);
 
   return {
     ok,
@@ -106,6 +116,8 @@ export async function buildHealth(): Promise<HealthSnapshot> {
     worker: { lastTick: lastTick?.toISOString() ?? null, healthy: workerHealthy },
     disk,
     lastBackupAt,
+    backupOffsite,
+    backupWarning,
     clockSkewMs,
     cameras: cameras.map((camera) => ({
       id: camera.id,

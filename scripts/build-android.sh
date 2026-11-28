@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
 JAVA_HOME="${JAVA_HOME:-$HOME/.local/opt/jdk17}"
 ANDROID_HOME="${ANDROID_HOME:-$HOME/.local/opt/android-sdk}"
 

@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 /* Design tokens — light is the default; dark is an explicit theme. */
+:root {
+  --font-manrope: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-fraunces: "Fraunces", ui-serif, Georgia, serif;
+}
+
 :root,
 [data-theme="light"] {
   --bg: #faf8f4;

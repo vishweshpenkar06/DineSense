@@ -175,7 +175,7 @@ async function main(): Promise<void> {
     await prisma.restaurantProfile.create({
       data: {
         id: "default",
-        name: "The Chinese Chef",
+        name: process.env.SEED_RESTAURANT_NAME ?? "The Chinese Chef",
         address: "Complete the setup wizard to set your address",
       },
     });
@@ -198,7 +198,7 @@ async function main(): Promise<void> {
   await prisma.restaurantProfile.create({
     data: {
       id: "default",
-      name: "The Chinese Chef",
+      name: process.env.SEED_RESTAURANT_NAME ?? "The Chinese Chef",
       address: "12 Market Road, Indore, Madhya Pradesh 452001",
       phone: "+91 90000 00000",
       billFooter: "Thank you, visit again!",

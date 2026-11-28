@@ -397,7 +397,7 @@ export default function ReceptionPage() {
               Pilot shadow mode — keep paper bills as the backup until the owner signs off.
             </div>
           ) : null}
-          {healthStatus && healthStatus !== "ok" ? (
+          {healthStatus === "down" ? (
             <div className="mb-3 rounded-2xl border border-coral/30 bg-coral/[0.08] px-4 py-3 text-sm text-coral">
               System health is {healthStatus}. Check Admin → Health (database, worker, disk, backup).
             </div>

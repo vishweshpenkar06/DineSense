@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({ settings: z.record(z.unknown()) });
+const bodySchema = z.object({ settings: z.record(z.string(), z.unknown()) });
 
 export async function GET() {
   try {
