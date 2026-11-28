@@ -1,0 +1,38 @@
+# Production Hardening Tasks
+
+- [ ] Phase 0 baseline
+- [ ] P1-0 web test harness and scratch guard
+- [ ] P1-1 queued orders
+- [ ] P1-2 unpaid table guard and void corrections
+- [ ] P1-3 tender/applied payments
+- [ ] B-2 bill number/FY/issue
+- [ ] B-1 registration type
+- [ ] B-3 service charge removal
+- [ ] B-4 GST receipt agreement
+- [ ] S-1 network exposure
+- [ ] S-2 secrets
+- [ ] S-3 login throttle
+- [ ] S-4 session revocation
+- [ ] S-5 PIN policy
+- [ ] S-6 remove demo bypass
+- [ ] S-7 health privacy
+- [ ] S-8 non-root containers
+- [ ] S-9 API auth matrix
+- [ ] C-1 atomic KOT
+- [ ] C-2 derived service state
+- [ ] C-3 locks and constraints
+- [ ] C-4 cleaning grace
+- [ ] C-5 timer 180
+- [ ] C-6 per-floor stock
+- [ ] V-1 detector replacement
+- [ ] V-2 camera access
+- [ ] O-1 backups
+- [ ] O-2 dependencies
+- [ ] O-3 updates
+- [ ] O-4 CI
+- [ ] O-5 fonts
+- [ ] O-6 reliability
+- [ ] O-7 external config
+- [ ] O-8 clean install
+- [ ] Phase 7 screen fixes
+- [ ] Phase 9 release verification
