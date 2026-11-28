@@ -74,6 +74,9 @@ import {
   workerLastTick,
   workerTick,
 } from "../src";
+import { assertScratchDatabaseUrl } from "../src/scratch";
+
+assertScratchDatabaseUrl();
 
 const dbDir = fileURLToPath(new URL("..", import.meta.url));
 const results: Array<{ name: string; pass: boolean; detail: string }> = [];

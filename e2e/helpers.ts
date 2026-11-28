@@ -1,9 +1,15 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
-export const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "admin123";
-export const WAITER_PIN = process.env.E2E_WAITER_PIN ?? "1111";
-export const CHEF_PIN = process.env.E2E_CHEF_PIN ?? "2222";
-export const RECEPTIONIST_PIN = process.env.E2E_RECEPTIONIST_PIN ?? "3333";
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set for E2E tests`);
+  return value;
+}
+
+export const ADMIN_PASSWORD = required("E2E_ADMIN_PASSWORD");
+export const WAITER_PIN = required("E2E_WAITER_PIN");
+export const CHEF_PIN = required("E2E_CHEF_PIN");
+export const RECEPTIONIST_PIN = required("E2E_RECEPTIONIST_PIN");
 
 export async function loginPin(page: Page, pin: string): Promise<void> {
   await page.goto("/login");

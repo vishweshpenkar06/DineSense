@@ -207,15 +207,18 @@ When the mini PC IP changes, update `SITE_ADDRESS` and the Android `DEFAULT_SERV
 
 ```bash
 npm run typecheck
+npm test
 npm run test:core
 npm run acceptance
 npm run test:e2e
 docker compose run --rm --no-deps vision pytest
 ```
 
-`npm run acceptance` needs a migrated and seeded scratch database. It resets runtime rows. Never run it against the live database.
+`npm test` runs the new DB and web unit suites, including the scratch-DB guard test and the API authentication coverage test.
 
-`npm run test:e2e` needs the dev stack with `ENABLE_DEV_CONSOLE=true` because tests use `/api/dev/reset`. The shipped stack keeps dev routes disabled. End-to-end (E2E) credentials come from `E2E_ADMIN_PASSWORD`, `E2E_WAITER_PIN`, `E2E_CHEF_PIN` and `E2E_RECEPTIONIST_PIN`. Tests use demo defaults when those variables are absent.
+`npm run acceptance` needs a migrated and seeded scratch database. It refuses any `DATABASE_URL` whose database name is not explicitly scratch, acceptance or test. Never run it against the live database.
+
+`npm run test:e2e` needs the dev stack with `ENABLE_DEV_CONSOLE=true` because tests use `/api/dev/reset`. The shipped stack keeps dev routes disabled. Set `E2E_ADMIN_PASSWORD`, `E2E_WAITER_PIN`, `E2E_CHEF_PIN` and `E2E_RECEPTIONIST_PIN` before running it; there are no credential defaults.
 
 The acceptance suite verifies billing to the paisa, timers and restarts, split payments, void and reopen, reports against raw bills, menu import, camera calibration, setup and pilot flows. Playwright covers two-device ordering, offline exactly-once sync, reception printing, admin configuration, cameras, setup and screenshots.
 
