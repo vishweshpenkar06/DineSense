@@ -101,14 +101,14 @@ export async function getReportSummary(query: ReportQuery): Promise<ReportSummar
       for (const raw of stored) {
         const line = raw as Partial<ReportTaxLineDto>;
         const rate = Number(line.ratePercent ?? 0);
-        const row = taxRows.get(rate) ?? { ratePercent: rate, taxablePaise: 0, taxPaise: 0 };
+        const row = taxRows.get(rate) ?? { ratePercent: rate, taxablePaise: 0, taxPaise: 0, cgstPaise: 0, sgstPaise: 0 };
         row.taxablePaise += Number(line.taxablePaise ?? 0);
         row.taxPaise += Number(line.taxPaise ?? 0);
         taxRows.set(rate, row);
       }
     } else {
       const rate = bill.taxRatePercent;
-      const row = taxRows.get(rate) ?? { ratePercent: rate, taxablePaise: 0, taxPaise: 0 };
+      const row = taxRows.get(rate) ?? { ratePercent: rate, taxablePaise: 0, taxPaise: 0, cgstPaise: 0, sgstPaise: 0 };
       row.taxablePaise += bill.taxableAmount;
       row.taxPaise += bill.cgst + bill.sgst;
       taxRows.set(rate, row);
@@ -227,7 +227,13 @@ export async function getReportSummary(query: ReportQuery): Promise<ReportSummar
     taxPaise,
     serviceChargePaise,
     discountPaise,
-    taxByRate: [...taxRows.values()].sort((a, b) => a.ratePercent - b.ratePercent),
+    taxByRate: [...taxRows.values()]
+      .map((line) => ({
+        ...line,
+        cgstPaise: Math.floor(line.taxPaise / 2),
+        sgstPaise: line.taxPaise - Math.floor(line.taxPaise / 2),
+      }))
+      .sort((a, b) => a.ratePercent - b.ratePercent),
     billsCount: bills.length,
     averageBillPaise: bills.length > 0 ? Math.round(earningsPaise / bills.length) : 0,
     ordersCount: orders.length,

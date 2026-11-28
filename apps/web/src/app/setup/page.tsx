@@ -119,6 +119,7 @@ export default function SetupPage() {
         name: String(form.get("name") ?? ""),
         address: String(form.get("address") ?? ""),
         phone: String(form.get("phone") ?? "") || null,
+        registrationType: String(form.get("registrationType") ?? "") || null,
         gstin: String(form.get("gstin") ?? "") || null,
         billFooter: String(form.get("billFooter") ?? "") || null,
       });
@@ -308,7 +309,21 @@ export default function SetupPage() {
               />
             </label>
             <label className="text-xs text-slate-400">
-              GSTIN (optional)
+              GST registration type
+              <select
+                name="registrationType"
+                defaultValue={settingsData?.restaurant.registrationType ?? ""}
+                className={`${INPUT} mt-1`}
+                required
+              >
+                <option value="">Choose one</option>
+                <option value="REGULAR">Regular — tax invoice with GST</option>
+                <option value="COMPOSITION">Composition — no tax collected</option>
+                <option value="UNREGISTERED">Unregistered — no GSTIN</option>
+              </select>
+            </label>
+            <label className="text-xs text-slate-400">
+              GSTIN (required for Regular)
               <input
                 name="gstin"
                 defaultValue={settingsData?.restaurant.gstin ?? ""}

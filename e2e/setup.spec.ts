@@ -13,7 +13,11 @@ test("fresh owner is sent to the setup wizard and can finish it", async ({ page,
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/setup$/);
 
-  await page.getByRole("button", { name: "7. Test" }).click();
+  await page.getByRole("button", { name: "1. Profile", exact: true }).click();
+  await page.locator('select[name="registrationType"]').selectOption("REGULAR");
+  await page.locator('input[name="gstin"]').fill("22AAAAA0000A1Z5");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await page.getByRole("button", { name: "7. Test", exact: true }).click();
   await page.getByRole("button", { name: "Run the test" }).click();
   await expect(page.getByText(/Test data cleaned/)).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Bill paid/)).toBeVisible();

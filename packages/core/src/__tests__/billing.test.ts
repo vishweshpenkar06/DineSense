@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   applyPayments,
   calculateBill,
+  receiptHeading,
+  taxRateForRegistration,
   formatBillNumber,
   isBillPaid,
   paidTotal,
@@ -211,5 +213,20 @@ describe("payments", () => {
         18000,
       ),
     ).toThrow(/cash/i);
+  });
+});
+
+describe("registration type", () => {
+  it("uses the correct issued receipt heading", () => {
+    expect(receiptHeading("REGULAR", true)).toBe("Tax Invoice");
+    expect(receiptHeading("COMPOSITION", true)).toBe("Bill of Supply");
+    expect(receiptHeading("UNREGISTERED", true)).toBe("Bill");
+    expect(receiptHeading("REGULAR", false)).toBe("ESTIMATE - not a tax invoice");
+  });
+
+  it("forces tax to zero outside REGULAR", () => {
+    expect(taxRateForRegistration("REGULAR", 5)).toBe(5);
+    expect(taxRateForRegistration("COMPOSITION", 5)).toBe(0);
+    expect(taxRateForRegistration("UNREGISTERED", 5)).toBe(0);
   });
 });

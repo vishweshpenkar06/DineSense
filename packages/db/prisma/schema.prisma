@@ -121,6 +121,7 @@ model RestaurantProfile {
   name        String
   address     String
   phone       String?
+  registrationType String?
   gstin       String?
   fssai       String?
   upiId       String?

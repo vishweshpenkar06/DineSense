@@ -1,3 +1,4 @@
+import type { RegistrationType } from "./dto";
 export type SurchargeType = "NONE" | "FLAT" | "PERCENT";
 
 export type BillItemInput = {
@@ -40,6 +41,23 @@ export type BillTotals = {
   serviceChargePaise?: number;
   taxBreakup?: BillTaxLine[];
 };
+
+export function receiptHeading(
+  registration: RegistrationType | null | undefined,
+  issued: boolean,
+): string {
+  if (!issued) return "ESTIMATE - not a tax invoice";
+  if (registration === "REGULAR") return "Tax Invoice";
+  if (registration === "COMPOSITION") return "Bill of Supply";
+  return "Bill";
+}
+
+export function taxRateForRegistration(
+  registration: RegistrationType | null | undefined,
+  rate: number,
+): number {
+  return registration === "REGULAR" ? Math.max(0, rate) : 0;
+}
 
 export type PaymentInput = { amountPaise: number };
 export type PaymentTender = { method: "CASH" | "UPI" | "CARD"; amountPaise: number };

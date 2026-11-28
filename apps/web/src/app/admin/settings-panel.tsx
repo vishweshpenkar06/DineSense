@@ -48,7 +48,6 @@ export function SettingsPanel({
             "TICKET_AMBER_S",
             "TICKET_RED_S",
             "TAX_RATE_PERCENT",
-            "SERVICE_CHARGE_PERCENT",
           ]) {
             settings[key] = Number(form.get(key) ?? 0);
           }
@@ -79,7 +78,6 @@ export function SettingsPanel({
             ["TICKET_AMBER_S", "Ticket amber (s)"],
             ["TICKET_RED_S", "Ticket red (s)"],
             ["TAX_RATE_PERCENT", "Default GST rate (%)"],
-            ["SERVICE_CHARGE_PERCENT", "Service charge (%)"],
           ].map(([key, label]) => (
             <label key={key} className="text-xs text-slate-400">
               {label}
@@ -138,6 +136,7 @@ export function SettingsPanel({
                 name: String(form.get("name") ?? ""),
                 address: String(form.get("address") ?? ""),
                 phone: String(form.get("phone") ?? "") || null,
+                registrationType: String(form.get("registrationType") ?? "") || null,
                 gstin: String(form.get("gstin") ?? "") || null,
                 fssai: String(form.get("fssai") ?? "") || null,
                 upiId: String(form.get("upiId") ?? "") || null,
@@ -163,6 +162,19 @@ export function SettingsPanel({
           <label className="text-xs text-slate-400 sm:col-span-2">
             Address
             <input name="address" defaultValue={data.restaurant.address} className={`${INPUT} mt-1`} />
+          </label>
+          <label className="text-xs text-slate-400">
+            GST registration type
+            <select
+              name="registrationType"
+              defaultValue={data.restaurant.registrationType ?? ""}
+              className={`${INPUT} mt-1`}
+            >
+              <option value="">Not set</option>
+              <option value="REGULAR">Regular</option>
+              <option value="COMPOSITION">Composition</option>
+              <option value="UNREGISTERED">Unregistered</option>
+            </select>
           </label>
           <label className="text-xs text-slate-400">
             GSTIN

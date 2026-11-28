@@ -868,7 +868,6 @@ const SETTINGS_BOUNDS: Record<string, [number, number]> = {
   TICKET_AMBER_S: [60, 7200],
   TICKET_RED_S: [60, 14400],
   TAX_RATE_PERCENT: [0, 100],
-  SERVICE_CHARGE_PERCENT: [0, 100],
 };
 
 export async function getAdminSettings(): Promise<AdminSettingsDto> {
@@ -882,6 +881,7 @@ export async function getAdminSettings(): Promise<AdminSettingsDto> {
       name: profile?.name ?? "DineSense",
       address: profile?.address ?? "",
       phone: profile?.phone ?? null,
+      registrationType: (profile?.registrationType as "REGULAR" | "COMPOSITION" | "UNREGISTERED" | null) ?? null,
       gstin: profile?.gstin ?? null,
       fssai: profile?.fssai ?? null,
       upiId: profile?.upiId ?? null,
@@ -956,6 +956,7 @@ export async function updateRestaurant(input: {
   name: string;
   address: string;
   phone?: string | null;
+  registrationType?: "REGULAR" | "COMPOSITION" | "UNREGISTERED" | null;
   gstin?: string | null;
   fssai?: string | null;
   upiId?: string | null;
@@ -966,6 +967,16 @@ export async function updateRestaurant(input: {
 }): Promise<void> {
   const name = required(input.name, "Restaurant name");
   const address = required(input.address, "Address");
+  const registrationType = input.registrationType ?? null;
+  if (
+    registrationType !== null &&
+    !["REGULAR", "COMPOSITION", "UNREGISTERED"].includes(registrationType)
+  ) {
+    throw new DomainError("Unknown registration type");
+  }
+  if (registrationType === "REGULAR" && !input.gstin?.trim()) {
+    throw new DomainError("GSTIN is required for a registered restaurant");
+  }
   await prisma.$transaction(async (tx) => {
     await tx.restaurantProfile.upsert({
       where: { id: "default" },
@@ -974,6 +985,7 @@ export async function updateRestaurant(input: {
         name,
         address,
         phone: input.phone?.trim() || null,
+        registrationType,
         gstin: input.gstin?.trim() || null,
         fssai: input.fssai?.trim() || null,
         upiId: input.upiId?.trim() || null,
@@ -985,6 +997,7 @@ export async function updateRestaurant(input: {
         name,
         address,
         phone: input.phone?.trim() || null,
+        registrationType,
         gstin: input.gstin?.trim() || null,
         fssai: input.fssai?.trim() || null,
         upiId: input.upiId?.trim() || null,

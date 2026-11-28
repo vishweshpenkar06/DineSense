@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "./client";
-import { ConflictError, NotFoundError } from "./errors";
+import { ConflictError, DomainError, NotFoundError } from "./errors";
 import { getBillView, payBill } from "./billing";
 import { startOrder, readyOrder, serveSession } from "./service";
 import { placeOrder } from "./orders";
@@ -43,6 +43,13 @@ export async function getSetupStatus(): Promise<SetupStatus> {
 }
 
 export async function completeSetup(actorId?: string | null): Promise<void> {
+  const restaurant = await prisma.restaurantProfile.findUnique({ where: { id: "default" } });
+  if (!restaurant?.registrationType) {
+    throw new DomainError("Choose a GST registration type before completing setup");
+  }
+  if (restaurant.registrationType === "REGULAR" && !restaurant.gstin) {
+    throw new DomainError("GSTIN is required for a registered restaurant");
+  }
   await prisma.$transaction(async (tx) => {
     await tx.setting.upsert({
       where: { key: "SETUP_COMPLETE" },

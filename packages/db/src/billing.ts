@@ -6,6 +6,7 @@ import {
   formatBillNumber,
   percentOf,
   taskText,
+  taxRateForRegistration,
   type BillAdjustmentDto,
   type BillLineDto,
   type BillPaymentDto,
@@ -14,6 +15,7 @@ import {
   type BillViewDto,
   type OpenBillRowDto,
   type QuickExtraDto,
+  type RegistrationType,
   type Settings,
   type SurchargeType,
 } from "@dinesense/core";
@@ -74,6 +76,7 @@ function totalsFor(
   zone: { surchargeType: string; surchargeValue: number },
   adjustments: AdjustmentRow[],
   settings: Settings,
+  registrationType: string | null,
 ): BillTotals {
   const subtotalPaise = items.reduce((sum, item) => sum + item.lineTotalPaise, 0);
   const extrasPaise = adjustments
@@ -100,7 +103,7 @@ function totalsFor(
     discountPaise,
     surchargeType: zone.surchargeType as SurchargeType,
     surchargeValue: zone.surchargeValue,
-    taxRatePercent: settings.TAX_RATE_PERCENT,
+    taxRatePercent: taxRateForRegistration(registrationType as RegistrationType, settings.TAX_RATE_PERCENT),
     serviceChargePercent: settings.SERVICE_CHARGE_PERCENT,
     taxInclusive: settings.TAX_MODE === "inclusive",
   });
@@ -179,7 +182,8 @@ async function computeCharges(
     include: { adjustments: true },
   });
   const adjustments = bill?.adjustments ?? [];
-  const totals = totalsFor(items, zoneOf(session), adjustments, settings);
+  const restaurant = await tx.restaurantProfile.findUnique({ where: { id: "default" } });
+  const totals = totalsFor(items, zoneOf(session), adjustments, settings, restaurant?.registrationType ?? null);
   return { totals, items, adjustments };
 }
 
@@ -460,6 +464,7 @@ export async function getBillView(
         name: restaurant?.name ?? "DineSense",
         address: restaurant?.address ?? "",
         phone: restaurant?.phone ?? null,
+        registrationType: (restaurant?.registrationType as "REGULAR" | "COMPOSITION" | "UNREGISTERED" | null) ?? null,
         gstin: restaurant?.gstin ?? null,
         fssai: restaurant?.fssai ?? null,
         upiId: restaurant?.upiId ?? null,
@@ -514,10 +519,17 @@ export async function getOpenBills(): Promise<OpenBillRowDto[]> {
     escalated.set(task.sessionId, (escalated.get(task.sessionId) ?? 0) + 1);
   }
 
+  const restaurant = await prisma.restaurantProfile.findUnique({ where: { id: "default" } });
   const rows: OpenBillRowDto[] = sessions.map((session) => {
     const zone = session.table?.zone ?? session.zone;
     const items = linesFromOrders(session.orders as OrderRow[]);
-    const totals = totalsFor(items, zone ?? { surchargeType: "NONE", surchargeValue: 0 }, session.bill?.adjustments ?? [], settings);
+    const totals = totalsFor(
+      items,
+      zone ?? { surchargeType: "NONE", surchargeValue: 0 },
+      session.bill?.adjustments ?? [],
+      settings,
+      restaurant?.registrationType ?? null,
+    );
     return {
       sessionId: session.id,
       kind: session.kind,

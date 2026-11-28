@@ -61,6 +61,7 @@ import {
   startOrder,
   updateAdminSettings,
   updateCamera,
+  updateRestaurant,
   updateStaff,
   updateTable,
   createTakeawaySession,
@@ -883,10 +884,6 @@ check(
 check("AC floor prices are used for the inclusive bill", inclusiveView.draft.subtotalPaise === 40000, `subtotal=${inclusiveView.draft.subtotalPaise}`);
 
 await setTax(5, "exclusive");
-await updateAdminSettings({
-  settings: { SERVICE_CHARGE_PERCENT: 10 },
-  actorId: adminUser.id,
-});
 await resetRuntime();
 await sim("occupied");
 await placeOrder({
@@ -898,19 +895,13 @@ const serviceSession = await openSession();
 if (!serviceSession) throw new Error("service-charge test session missing");
 const serviceView = await getBillView(serviceSession.id);
 check(
-  "service charge is added before GST and shown in the breakup",
+  "mandatory service charge is never applied to new bills",
   serviceView.draft.subtotalPaise === 18000 &&
-    serviceView.draft.serviceChargePaise === 1800 &&
-    serviceView.draft.taxPaise === 990 &&
-    serviceView.draft.totalPaise === 20800 &&
-    serviceView.draft.taxBreakup?.[0]?.ratePercent === 5 &&
-    serviceView.draft.taxBreakup?.[0]?.taxablePaise === 19800,
+    (serviceView.draft.serviceChargePaise ?? 0) === 0 &&
+    serviceView.draft.taxPaise === 900 &&
+    serviceView.draft.totalPaise === 18900,
   `subtotal=${serviceView.draft.subtotalPaise} service=${serviceView.draft.serviceChargePaise} tax=${serviceView.draft.taxPaise} total=${serviceView.draft.totalPaise}`,
 );
-await updateAdminSettings({
-  settings: { SERVICE_CHARGE_PERCENT: 0 },
-  actorId: adminUser.id,
-});
 await setTax(0, "exclusive");
 
 // ---------------------------------------------------------------------------
@@ -954,6 +945,12 @@ check(
 );
 const yesterday = shiftBusinessDate(today, -1);
 const summary = await getReportSummary({ from: today, to: today });
+check(
+  "report per-rate GST splits agree with total tax",
+  summary.taxByRate.every((line) => line.cgstPaise + line.sgstPaise === line.taxPaise) &&
+    summary.taxByRate.reduce((sum, line) => sum + line.taxPaise, 0) === summary.taxPaise,
+  `tax=${summary.taxPaise} rates=${summary.taxByRate.length}`,
+);
 const rawBills = await prisma.bill.findMany({
   where: { status: "PAID" },
   select: { total: true, billNumber: true },
@@ -1331,6 +1328,24 @@ check(
     demoOpen === 0 &&
     demoTables.every((table) => table.state === "free"),
 );
+await prisma.restaurantProfile.update({
+  where: { id: "default" },
+  data: { registrationType: null, gstin: null },
+});
+let setupRejected = false;
+try {
+  await completeSetup(adminUser.id);
+} catch {
+  setupRejected = true;
+}
+check("setup requires a registration type", setupRejected);
+await updateRestaurant({
+  name: "The Chinese Chef",
+  address: "Test Address",
+  registrationType: "REGULAR",
+  gstin: "22AAAAA0000A1Z5",
+  actorId: adminUser.id,
+});
 await completeSetup(adminUser.id);
 check("setup completes and persists", (await getSetupStatus()).complete === true);
 

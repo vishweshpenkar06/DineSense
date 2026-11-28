@@ -1,6 +1,7 @@
 "use client";
 
 import type { BillViewDto, OpenBillRowDto } from "@dinesense/core";
+import { receiptHeading } from "@dinesense/core/billing";
 import { Brand, BrandMark } from "@/components/brand";
 import { ConnectionBadge } from "@/components/connection-badge";
 import { UpiQr, upiPayUri } from "@/components/upi-qr";
@@ -451,14 +452,26 @@ export default function ReceptionPage() {
 <div className="bill-print" data-format={printFormat}>
               <div style={{ textAlign: "center" }}>
                 <p style={{ fontSize: "1.2em", fontWeight: 700 }}>{bill.restaurant.name}</p>
+                <p style={{ fontWeight: 700 }}>
+                  {receiptHeading(bill.restaurant.registrationType, Boolean(bill.bill?.billNumber))}
+                </p>
                 {bill.restaurant.address ? <p>{bill.restaurant.address}</p> : null}
                 {bill.restaurant.phone ? <p>{bill.restaurant.phone}</p> : null}
                 {bill.restaurant.gstin ? <p>GSTIN: {bill.restaurant.gstin}</p> : null}
                 {bill.restaurant.fssai ? <p>FSSAI: {bill.restaurant.fssai}</p> : null}
+                {bill.restaurant.registrationType === "COMPOSITION" ? (
+                  <p style={{ fontSize: "0.9em" }}>
+                    Composition taxable person, not eligible to collect tax on supplies.
+                  </p>
+                ) : null}
               </div>
               <hr />
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>{bill.bill?.billNumber ? `Bill: ${bill.bill.billNumber}` : "ESTIMATE - not a tax invoice"}</span>
+                <span>
+                  {bill.bill?.billNumber
+                    ? `Bill: ${bill.bill.billNumber}`
+                    : "ESTIMATE - not a tax invoice"}
+                </span>
                 <span>
                   {ist(bill.bill?.paidAt ?? new Date().toISOString())}
                 </span>

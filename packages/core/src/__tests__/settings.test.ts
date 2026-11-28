@@ -47,6 +47,10 @@ describe("settings", () => {
     expect(mergeSettings({ TAX_RATE_PERCENT: 0 }).TAX_RATE_PERCENT).toBe(0);
   });
 
+  it("forces service charge to zero", () => {
+    expect(mergeSettings({ SERVICE_CHARGE_PERCENT: 10 }).SERVICE_CHARGE_PERCENT).toBe(0);
+  });
+
   it("accepts the shadow-mode flag", () => {
     expect(mergeSettings({ SHADOW_MODE: true }).SHADOW_MODE).toBe(true);
     expect(mergeSettings({ SHADOW_MODE: "false" }).SHADOW_MODE).toBe(false);

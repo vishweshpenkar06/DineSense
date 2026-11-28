@@ -473,8 +473,8 @@ export default function AdminPage() {
                             <tr key={line.ratePercent} className="border-t border-line">
                               <td className="py-2">{line.ratePercent}%</td>
                               <td className="py-2 text-right tabular-nums">{money(line.taxablePaise)}</td>
-                              <td className="py-2 text-right tabular-nums">{money(Math.floor(line.taxPaise / 2))}</td>
-                              <td className="py-2 text-right tabular-nums">{money(line.taxPaise - Math.floor(line.taxPaise / 2))}</td>
+                              <td className="py-2 text-right tabular-nums">{money(line.cgstPaise)}</td>
+                              <td className="py-2 text-right tabular-nums">{money(line.sgstPaise)}</td>
                               <td className="py-2 text-right font-semibold tabular-nums">{money(line.taxPaise)}</td>
                             </tr>
                           ))}

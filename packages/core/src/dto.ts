@@ -219,6 +219,8 @@ export type BillAdjustmentDto = {
   createdAt: string;
 };
 
+export type RegistrationType = "REGULAR" | "COMPOSITION" | "UNREGISTERED";
+
 export type BillPaymentDto = {
   id: string;
   method: "CASH" | "UPI" | "CARD";
@@ -266,6 +268,7 @@ export type BillViewDto = {
     name: string;
     address: string;
     phone: string | null;
+    registrationType: RegistrationType | null;
     gstin: string | null;
     fssai: string | null;
     upiId: string | null;
@@ -371,6 +374,7 @@ export type AdminSettingsDto = {
     name: string;
     address: string;
     phone: string | null;
+    registrationType: RegistrationType | null;
     gstin: string | null;
     fssai: string | null;
     upiId: string | null;
@@ -410,6 +414,8 @@ export type ReportTaxLineDto = {
   ratePercent: number;
   taxablePaise: number;
   taxPaise: number;
+  cgstPaise: number;
+  sgstPaise: number;
 };
 
 export type ReportCorrectionDto = {

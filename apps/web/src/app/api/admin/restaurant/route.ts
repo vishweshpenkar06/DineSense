@@ -11,6 +11,7 @@ const bodySchema = z.object({
   name: z.string().min(1).max(120),
   address: z.string().min(1).max(300),
   phone: z.string().max(40).nullable().optional(),
+  registrationType: z.enum(["REGULAR", "COMPOSITION", "UNREGISTERED"]).nullable().optional(),
   gstin: z.string().max(40).nullable().optional(),
   fssai: z.string().max(40).nullable().optional(),
   upiId: z.string().max(120).nullable().optional(),

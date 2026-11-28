@@ -4,6 +4,20 @@ import { RECEPTIONIST_PIN, WAITER_PIN, addFirstVariant, loginAdminApi, loginPin,
 test("bill is an estimate until issued", async ({ browser, request }) => {
   await loginAdminApi(request);
   await resetTables(request);
+  const profile = ((await (await request.get("/api/admin/settings")).json()) as {
+    restaurant: Record<string, string | null>;
+  }).restaurant;
+  const profileUpdate = await request.put("/api/admin/restaurant", {
+    data: {
+      name: profile.name,
+      address: profile.address || "Test Address",
+      phone: profile.phone,
+      registrationType: "REGULAR",
+      gstin: "22AAAAA0000A1Z5",
+      billFooter: profile.billFooter,
+    },
+  });
+  expect(profileUpdate.ok(), await profileUpdate.text()).toBeTruthy();
 
   const waiterContext = await browser.newContext();
   const waiter = await waiterContext.newPage();
@@ -22,6 +36,7 @@ test("bill is an estimate until issued", async ({ browser, request }) => {
 
   await reception.getByRole("button", { name: "Issue bill" }).click();
   await expect(reception.locator(".bill-print")).toContainText(/Bill: DS\/\d{2}-\d{2}\/\d{5}/);
+  await expect(reception.locator(".bill-print")).toContainText("Tax Invoice");
 
   await waiterContext.close();
   await receptionContext.close();

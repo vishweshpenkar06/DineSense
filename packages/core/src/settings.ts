@@ -68,13 +68,6 @@ export function mergeSettings(raw: Record<string, unknown> | null | undefined): 
     merged.TAX_RATE_PERCENT = Math.round(parsedTax * 100) / 100;
   }
 
-  const serviceCharge = raw.SERVICE_CHARGE_PERCENT;
-  const parsedServiceCharge =
-    typeof serviceCharge === "number" ? serviceCharge : typeof serviceCharge === "string" ? Number(serviceCharge) : NaN;
-  if (Number.isFinite(parsedServiceCharge) && parsedServiceCharge >= 0 && parsedServiceCharge <= 100) {
-    merged.SERVICE_CHARGE_PERCENT = Math.round(parsedServiceCharge * 100) / 100;
-  }
-
   const taxMode = raw.TAX_MODE;
   if (taxMode === "inclusive" || taxMode === "exclusive") {
     merged.TAX_MODE = taxMode;
