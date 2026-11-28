@@ -66,6 +66,8 @@ jobs:
       POSTGRES_USER: dinesense
       POSTGRES_PASSWORD: dinesense
       POSTGRES_DB: dinesense
+      DATABASE_URL: postgresql://dinesense:dinesense@localhost:5432/dinesense?schema=public
+      TRUST_PROXY: "true"
       SESSION_SECRET: ci-session-secret-not-for-production
       ENCRYPTION_KEY: ci-encryption-key-not-for-production
       VISION_SHARED_SECRET: ci-vision-secret-not-for-production

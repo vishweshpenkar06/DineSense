@@ -201,6 +201,8 @@ async function main(): Promise<void> {
       name: process.env.SEED_RESTAURANT_NAME ?? "The Chinese Chef",
       address: "12 Market Road, Indore, Madhya Pradesh 452001",
       phone: "+91 90000 00000",
+      registrationType: "REGULAR",
+      gstin: "22AAAAA0000A1Z5",
       billFooter: "Thank you, visit again!",
     },
   });

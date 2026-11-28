@@ -17,7 +17,8 @@
     "db:migrate": "npm run db:migrate -w @dinesense/db",
     "db:seed": "npm run db:seed -w @dinesense/db",
     "acceptance": "npm run acceptance -w @dinesense/db",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "preflight": "bash scripts/preflight.sh"
   },
   "engines": {
     "node": ">=22"

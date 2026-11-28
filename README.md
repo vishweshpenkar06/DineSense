@@ -208,6 +208,7 @@ When the mini PC IP changes, update `SITE_ADDRESS` and the Android `DEFAULT_SERV
 ## Testing
 
 ```bash
+npm run preflight        # typecheck, units, core, fresh-DB migrations + acceptance, build
 npm run typecheck
 npm test
 npm run test:core
