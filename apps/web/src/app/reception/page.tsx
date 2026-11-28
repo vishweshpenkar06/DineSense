@@ -681,8 +681,8 @@ export default function ReceptionPage() {
             ) : null}
 
             {bill.bill?.status === "OPEN" ? (
-              <div className="no-print grid gap-3 xl:grid-cols-2">
-                <section className="rounded-2xl border border-line bg-surface p-4">
+              <div className="no-print grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
+                <section className="rounded-2xl border border-line bg-surface p-4 xl:row-span-2">
                   <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Items · void before payment
                   </h2>
@@ -862,7 +862,7 @@ export default function ReceptionPage() {
                   ) : null}
                 </section>
 
-                <section className="rounded-2xl border border-line bg-surface p-4 xl:col-span-2">
+                <section className="payment-dock rounded-2xl border border-line bg-surface p-4">
                   <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     Payment
                   </h2>

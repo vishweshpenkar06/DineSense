@@ -12,6 +12,7 @@ import {
   type NotificationState,
 } from "@/lib/notifications";
 import { useShift } from "@/lib/shift";
+import { useWaiterOrders } from "@/components/waiter-orders";
 import {
   STATE_DOT,
   STATE_LABEL,
@@ -40,16 +41,17 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const BTN =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium text-ink transition hover:border-slate-600 hover:bg-raised disabled:opacity-40";
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium text-ink transition hover:border-slate-600 hover:bg-raised disabled:opacity-40";
 const BTN_PRIMARY =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-[#efc05e] disabled:bg-raised disabled:text-faint disabled:hover:bg-raised";
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-canvas transition hover:bg-[#efc05e] disabled:bg-raised disabled:text-faint disabled:hover:bg-raised";
 const BTN_TABLE =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2.5 text-sm font-semibold text-accent transition hover:bg-accent/[0.12] disabled:opacity-40";
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-accent/25 bg-accent/[0.06] px-3 py-2.5 text-sm font-semibold text-accent transition hover:bg-accent/[0.12] disabled:opacity-40";
 
 export default function WaiterPage() {
   const router = useRouter();
   const { snapshot, stream, unauthorized, error, refresh, serverNowMs, setError } = useSnapshotLive();
   const shift = useShift();
+  const { pending, failed } = useWaiterOrders();
   const [busy, setBusy] = useState<string | null>(null);
   const [lastZone, setLastZone] = useState<string | null>(null);
   const [notificationState, setNotificationState] = useState<NotificationState>("default");
@@ -173,6 +175,12 @@ export default function WaiterPage() {
   }
 
   async function signOut() {
+    if (
+      pending.length + failed.length > 0 &&
+      !window.confirm("You have queued or failed orders. Sign out anyway? They stay on this device.")
+    ) {
+      return;
+    }
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
   }
@@ -276,21 +284,6 @@ export default function WaiterPage() {
             <span className="hidden text-sm sm:inline">
               {notificationState === "granted" ? "Alerts on" : "Alerts"}
             </span>
-          </button>
-          <Link
-            href="/waiter/cameras"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface text-muted transition hover:text-ink sm:w-auto sm:gap-1.5 sm:px-3"
-          >
-            <Camera className="h-4 w-4" />
-            <span className="hidden text-sm sm:inline">Cameras</span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface text-muted transition hover:text-ink sm:w-auto sm:gap-1.5 sm:px-3"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden text-sm sm:inline">Out</span>
           </button>
         </div>
       </header>
@@ -435,7 +428,7 @@ export default function WaiterPage() {
                 {zone.tables.filter((table) => table.session).length} seated
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            <div data-testid="table-grid" className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
               {zone.tables.map((table) => (
                 <TableCard
                   key={table.id}
@@ -593,6 +586,16 @@ function TableCard({
         {table.session && table.state === "food_ready" ? (
           <button type="button" className={BTN} disabled={busy !== null} onClick={onServe}>
             <CheckCircle2 className="h-3.5 w-3.5" /> Served
+          </button>
+        ) : null}
+        {table.session && (table.state === "dining" || table.state === "bill_requested") ? (
+          <button
+            type="button"
+            className={BTN}
+            disabled={busy !== null || table.state === "bill_requested"}
+            onClick={onBill}
+          >
+            Bill
           </button>
         ) : null}
       </div>

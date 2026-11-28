@@ -242,3 +242,17 @@ button {
     margin: 4mm;
   }
 }
+
+@media (min-width: 1280px) and (min-height: 760px) {
+  .reception-shell { padding-right: 420px; }
+  .payment-dock {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 30;
+    width: 400px;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgb(28 25 21 / 0.12);
+  }
+}
