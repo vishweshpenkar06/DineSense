@@ -1,4 +1,7 @@
 import {
+  isAcceptablePassword,
+  isAcceptablePin,
+  verifySecret,
   encryptSecret,
   hashSecret,
   type AdminCameraDto,
@@ -765,7 +768,19 @@ export async function getAdminStaff(): Promise<AdminStaffDto[]> {
 }
 
 function validatePin(pin: string): void {
-  if (!/^\d{4,6}$/.test(pin)) throw new DomainError("PIN must be 4 to 6 digits");
+  if (!isAcceptablePin(pin)) {
+    throw new DomainError("PIN must be six non-trivial digits");
+  }
+}
+
+async function assertUniquePin(pin: string, excludeId?: string): Promise<void> {
+  const users = await prisma.user.findMany({
+    where: { active: true, pinHash: { not: null }, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    select: { id: true, pinHash: true },
+  });
+  if (users.some((user) => verifySecret(pin, user.pinHash))) {
+    throw new DomainError("This PIN is already used by another active user");
+  }
 }
 
 export async function createStaff(input: {
@@ -782,13 +797,14 @@ export async function createStaff(input: {
   let pinHash: string | null = null;
   let passwordHash: string | null = null;
   if (input.role === "ADMIN") {
-    if (!input.password || input.password.length < 6) {
-      throw new DomainError("Admin passwords must be at least 6 characters");
+    if (!input.password || !isAcceptablePassword(input.password)) {
+      throw new DomainError("Admin passwords must be at least 10 characters");
     }
     passwordHash = hashSecret(input.password);
   } else {
-    if (!input.pin) throw new DomainError("Staff need a 4–6 digit PIN");
+    if (!input.pin) throw new DomainError("Staff need a six-digit PIN");
     validatePin(input.pin);
+    await assertUniquePin(input.pin);
     pinHash = hashSecret(input.pin);
   }
   const created = await prisma.$transaction(async (tx) => {
@@ -820,12 +836,13 @@ export async function updateStaff(input: {
   let pinHash = user.pinHash;
   if (input.pin) {
     validatePin(input.pin);
+    await assertUniquePin(input.pin, user.id);
     pinHash = hashSecret(input.pin);
   }
   let passwordHash = user.passwordHash;
   if (input.password !== undefined) {
-    if (input.password.length < 6) {
-      throw new DomainError("Admin passwords must be at least 6 characters");
+    if (!isAcceptablePassword(input.password)) {
+      throw new DomainError("Admin passwords must be at least 10 characters");
     }
     passwordHash = hashSecret(input.password);
   }
@@ -846,6 +863,10 @@ export async function updateStaff(input: {
         active: input.active,
         pinHash,
         passwordHash,
+        tokenVersion:
+          input.pin || input.password || input.role !== undefined || input.active !== undefined
+            ? { increment: 1 }
+            : undefined,
       },
     });
     await audit(tx, input.actorId, "staff.updated", "user", input.id, {

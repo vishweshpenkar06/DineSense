@@ -70,6 +70,11 @@ else
   SITE_ADDRESS="${SITE_ADDRESS:-$SITE_DEFAULT}"
 fi
 
+if grep -Eq '^(POSTGRES_PASSWORD|SESSION_SECRET|ENCRYPTION_KEY|VISION_SHARED_SECRET)=.*(change-me|dev-|^$)' .env; then
+  echo "Refusing to start with placeholder secrets. Update .env." >&2
+  exit 1
+fi
+
 echo "Building and starting DineSense…"
 docker compose up -d --build
 
@@ -115,7 +120,6 @@ cat <<TEXT
 DineSense is installed.
 
   URL:            https://${SITE_ADDRESS}
-  Direct dev URL: http://${SITE_ADDRESS}:3000
   Setup wizard:   https://${SITE_ADDRESS}/setup
   Admin login:    password login${INSTALLED_ADMIN:+
   Admin password: ${INSTALLED_ADMIN}}

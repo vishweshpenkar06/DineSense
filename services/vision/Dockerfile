@@ -25,6 +25,8 @@ COPY scripts ./scripts
 COPY pytest.ini .
 COPY zones.example.json .
 
+RUN useradd --create-home --uid 10001 vision && chown -R vision:vision /app /data
+USER vision
 EXPOSE 8100
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

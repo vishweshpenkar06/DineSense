@@ -1117,19 +1117,21 @@ check(
   !floorsAfterDelete.zones.some((zone) => zone.id === adminZone.id),
 );
 
+const staffPin1 = String(100000 + Math.floor(Math.random() * 899999));
+const staffPin2 = String(100000 + Math.floor(Math.random() * 899999));
 const createdStaff = await createStaff({
   name: "Acceptance Waiter",
   role: "WAITER",
-  pin: "9876",
+  pin: staffPin1,
   actorId: adminUser.id,
 });
 let staffRow = await prisma.user.findUniqueOrThrow({ where: { id: createdStaff.id } });
-check("admin can create staff with a PIN", verifySecret("9876", staffRow.pinHash));
-await updateStaff({ id: createdStaff.id, pin: "6543", actorId: adminUser.id });
+check("admin can create staff with a PIN", verifySecret(staffPin1, staffRow.pinHash));
+await updateStaff({ id: createdStaff.id, pin: staffPin2, actorId: adminUser.id });
 staffRow = await prisma.user.findUniqueOrThrow({ where: { id: createdStaff.id } });
 check(
   "admin can reset a staff PIN",
-  verifySecret("6543", staffRow.pinHash) && !verifySecret("9876", staffRow.pinHash),
+  verifySecret(staffPin2, staffRow.pinHash) && !verifySecret(staffPin1, staffRow.pinHash),
 );
 let badPinRejected = false;
 try {

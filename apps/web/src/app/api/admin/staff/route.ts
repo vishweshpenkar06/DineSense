@@ -13,8 +13,8 @@ const roleSchema = z.enum(["ADMIN", "RECEPTIONIST", "WAITER", "CHEF"]);
 const createSchema = z.object({
   name: z.string().min(1).max(80),
   role: roleSchema,
-  pin: z.string().regex(/^\d{4,6}$/).optional(),
-  password: z.string().min(6).max(200).optional(),
+  pin: z.string().regex(/^\d{6}$/).optional(),
+  password: z.string().min(10).max(200).optional(),
 });
 
 const updateSchema = z.object({
@@ -22,8 +22,8 @@ const updateSchema = z.object({
   name: z.string().min(1).max(80).optional(),
   role: roleSchema.optional(),
   active: z.boolean().optional(),
-  pin: z.string().regex(/^\d{4,6}$/).optional(),
-  password: z.string().min(6).max(200).optional(),
+  pin: z.string().regex(/^\d{6}$/).optional(),
+  password: z.string().min(10).max(200).optional(),
 });
 
 export async function GET() {

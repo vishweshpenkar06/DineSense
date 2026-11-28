@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { ALL_ROLES, requireRole } from "@/lib/auth";
+import { ALL_ROLES, readSessionUser, requireRole } from "@/lib/auth";
 import { subscribeRealtime } from "@/lib/realtime";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,12 @@ export async function GET(request: NextRequest): Promise<Response> {
         })}\n\n`,
       );
 
-      const heartbeat = setInterval(() => send(": ping\n\n"), 15_000);
+      const heartbeat = setInterval(() => {
+        void readSessionUser().then((user) => {
+          if (!user) close();
+          else send(": ping\n\n");
+        });
+      }, 15_000);
 
       const close = () => {
         if (closed) return;

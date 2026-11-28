@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, mergeSettings } from "../settings";
-import { decryptSecret, encryptSecret, hashSecret, safeEqual, verifySecret } from "../security";
+import {
+  decryptSecret,
+  encryptSecret,
+  hashSecret,
+  isAcceptablePassword,
+  isAcceptablePin,
+  loginDelayMs,
+  safeEqual,
+  verifySecret,
+} from "../security";
 
 describe("settings", () => {
   it("defaults the decision window to 120 seconds", () => {
@@ -88,6 +97,27 @@ describe("security", () => {
     expect(encrypted).not.toContain("secret");
     expect(decryptSecret(encrypted, "test-key")).toBe(url);
     expect(() => decryptSecret(encrypted, "wrong-key")).toThrow();
+  });
+
+  it("accepts only non-trivial six-digit PINs", () => {
+    expect(isAcceptablePin("200281")).toBe(true);
+    expect(isAcceptablePin("111111")).toBe(false);
+    expect(isAcceptablePin("123456")).toBe(false);
+    expect(isAcceptablePin("654321")).toBe(false);
+    expect(isAcceptablePin("1111")).toBe(false);
+  });
+
+  it("requires a stronger admin password", () => {
+    expect(isAcceptablePassword("4fYXeDX0kRf7nwE8")).toBe(true);
+    expect(isAcceptablePassword("admin123")).toBe(false);
+  });
+
+  it("grows login delay after repeated failures without permanent lockout", () => {
+    expect(loginDelayMs(0)).toBe(0);
+    expect(loginDelayMs(4)).toBe(0);
+    expect(loginDelayMs(5)).toBe(1_000);
+    expect(loginDelayMs(6)).toBe(2_000);
+    expect(loginDelayMs(20)).toBe(30_000);
   });
 
   it("compares shared secrets without leaking length", () => {

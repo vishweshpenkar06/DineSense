@@ -21,5 +21,6 @@ RUN npm run build -w @dinesense/web
 FROM base AS runtime
 ENV NODE_ENV=production
 COPY --from=build /app /app
+USER node
 EXPOSE 3000
 CMD ["npm", "run", "start", "-w", "@dinesense/web"]

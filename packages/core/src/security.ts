@@ -61,6 +61,24 @@ export function decryptSecret(payload: string, encryptionKeySource: string): str
   ]).toString("utf8");
 }
 
+export function isAcceptablePin(pin: string): boolean {
+  if (!/^\d{6}$/.test(pin)) return false;
+  if (/^(\d)\1{5}$/.test(pin)) return false;
+  const digits = pin.split("").map(Number);
+  const ascending = digits.every((digit, index) => index === 0 || digit === digits[index - 1]! + 1);
+  const descending = digits.every((digit, index) => index === 0 || digit === digits[index - 1]! - 1);
+  return !ascending && !descending;
+}
+
+export function isAcceptablePassword(password: string): boolean {
+  return password.length >= 10;
+}
+
+export function loginDelayMs(recentFailures: number): number {
+  if (recentFailures < 5) return 0;
+  return Math.min(30_000, 2 ** (recentFailures - 5) * 1_000);
+}
+
 export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);

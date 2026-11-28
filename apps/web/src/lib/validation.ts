@@ -15,8 +15,8 @@ export const tableStateSchema = z.enum([
 
 export const loginSchema = z
   .object({
-    pin: z.string().regex(/^\d{4,6}$/).optional(),
-    password: z.string().min(4).max(200).optional(),
+    pin: z.string().regex(/^\d{6}$/).optional(),
+    password: z.string().min(10).max(200).optional(),
   })
   .refine((body) => Boolean(body.pin) !== Boolean(body.password), {
     message: "Provide either a PIN or a password",
