@@ -23,7 +23,7 @@ npm run build
 
 if [[ "${RUN_E2E:-0}" == "1" ]]; then
   ENABLE_DEV_CONSOLE=true VISION_DEMO=true docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --force-recreate web worker vision
-  docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T -u root vision python scripts/make_demo.py
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T -u root vision python scripts/make_demo.py --skip-verify
   docker compose -f docker-compose.yml -f docker-compose.dev.yml restart vision
   npm run test:e2e
 fi

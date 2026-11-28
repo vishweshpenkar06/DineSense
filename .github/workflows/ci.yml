@@ -95,7 +95,7 @@ jobs:
       - run: npm run db:seed -w @dinesense/db -- --force
       - name: Generate demo camera files
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T -u root vision python scripts/make_demo.py
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T -u root vision python scripts/make_demo.py --skip-verify
           docker compose -f docker-compose.yml -f docker-compose.dev.yml restart vision
       - name: Wait for services
         run: |

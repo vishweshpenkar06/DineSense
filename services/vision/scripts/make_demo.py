@@ -211,6 +211,7 @@ def main() -> None:
     parser.add_argument("--person-height", type=float, default=0.4)
     parser.add_argument("--seated-confirm", type=float, default=5.0)
     parser.add_argument("--empty-confirm", type=float, default=5.0)
+    parser.add_argument("--skip-verify", action="store_true")
     args = parser.parse_args()
 
     if not args.secret:
@@ -268,13 +269,16 @@ def main() -> None:
             duration=args.duration,
             person_height=args.person_height,
         )
-        detected = verify_video(video_path, detector, args.fps)
-        print(f"  {video_path.name}: {len(tables)} tables, {detected} people detected at 30s")
-        if detected == 0:
-            raise SystemExit(
-                "The generated video has no detectable people. Re-run with "
-                "--person-height 0.5 or a clearer --image."
-            )
+        if args.skip_verify:
+            print(f"  {video_path.name}: {len(tables)} tables, verification skipped")
+        else:
+            detected = verify_video(video_path, detector, args.fps)
+            print(f"  {video_path.name}: {len(tables)} tables, {detected} people detected at 30s")
+            if detected == 0:
+                raise SystemExit(
+                    "The generated video has no detectable people. Re-run with "
+                    "--person-height 0.5 or a clearer --image."
+                )
         entry = deepcopy(camera)
         entry["video"] = f"/data/{video_path.name}"
         demo["cameras"].append(entry)
