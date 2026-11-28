@@ -108,4 +108,4 @@ def test_environment_defaults_are_offline_safe():
     env = Environment.from_env({})
     assert env.demo is False
     assert env.force_file is False
-    assert env.model_path == "yolo11n.pt"
+    assert env.model_path == "/app/models/yolox_nano.onnx"

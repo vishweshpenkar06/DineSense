@@ -21,9 +21,9 @@ class Environment:
     demo: bool = False
     force_file: bool = False
     tuning_log_path: str = "/data/tuning.csv"
-    model_path: str = "yolo11n.pt"
+    model_path: str = "/app/models/yolox_nano.onnx"
     model_conf: float = 0.35
-    model_imgsz: int = 640
+    model_imgsz: int = 416
     device: str = "cpu"
     snapshot_fps: float = 1.0
 
@@ -41,9 +41,9 @@ class Environment:
             demo=flag("VISION_DEMO"),
             force_file=flag("VISION_FORCE_FILE"),
             tuning_log_path=env.get("TUNING_LOG_PATH", "/data/tuning.csv"),
-            model_path=env.get("YOLO_MODEL", "yolo11n.pt"),
+            model_path=env.get("YOLO_MODEL", "/app/models/yolox_nano.onnx"),
             model_conf=float(env.get("YOLO_CONF", "0.35")),
-            model_imgsz=int(env.get("YOLO_IMGSZ", "640")),
+            model_imgsz=int(env.get("YOLO_IMGSZ", "416")),
             device=env.get("YOLO_DEVICE", "cpu"),
             snapshot_fps=float(env.get("SNAPSHOT_FPS", "1")),
         )

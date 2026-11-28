@@ -923,6 +923,7 @@ export async function updateAdminSettings(input: {
     "TAX_MODE",
     "BILL_NUMBER_PREFIX",
     "SHADOW_MODE",
+    "WAITER_CAMERA_VIEW",
   ]);
   const updates: Array<{ key: string; value: number | string | boolean }> = [];
 
@@ -939,9 +940,12 @@ export async function updateAdminSettings(input: {
     } else if (key === "SHADOW_MODE") {
       if (typeof raw !== "boolean") throw new DomainError("Shadow mode must be true or false");
       updates.push({ key, value: raw });
+    } else if (key === "WAITER_CAMERA_VIEW") {
+      if (typeof raw !== "boolean") throw new DomainError("Waiter camera view must be true or false");
+      updates.push({ key, value: raw });
     } else if (key === "BILL_NUMBER_PREFIX") {
-      if (typeof raw !== "string" || !/^[A-Za-z0-9]{1,8}$/.test(raw)) {
-        throw new DomainError("Bill prefix must be 1–8 letters or digits");
+      if (typeof raw !== "string" || !/^[A-Za-z0-9]{1,4}$/.test(raw)) {
+        throw new DomainError("Bill prefix must be 1–4 letters or digits");
       }
       updates.push({ key, value: raw.toUpperCase() });
     } else {

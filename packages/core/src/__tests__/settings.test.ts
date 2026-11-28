@@ -56,6 +56,11 @@ describe("settings", () => {
     expect(mergeSettings({ TAX_RATE_PERCENT: 0 }).TAX_RATE_PERCENT).toBe(0);
   });
 
+  it("keeps waiter camera view on by default and allows disabling it", () => {
+    expect(DEFAULT_SETTINGS.WAITER_CAMERA_VIEW).toBe(true);
+    expect(mergeSettings({ WAITER_CAMERA_VIEW: false }).WAITER_CAMERA_VIEW).toBe(false);
+  });
+
   it("forces service charge to zero", () => {
     expect(mergeSettings({ SERVICE_CHARGE_PERCENT: 10 }).SERVICE_CHARGE_PERCENT).toBe(0);
   });

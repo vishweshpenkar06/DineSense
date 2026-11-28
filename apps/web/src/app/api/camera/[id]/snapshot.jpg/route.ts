@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { loadSettings } from "@dinesense/db";
 import { apiError } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { uuidSchema } from "@/lib/validation";
@@ -13,6 +14,13 @@ export async function GET(
   try {
     const auth = await requireRole(["ADMIN", "RECEPTIONIST", "WAITER", "CHEF"]);
     if ("error" in auth) return auth.error;
+    const settings = await loadSettings();
+    const allowed =
+      auth.user.role === "ADMIN" ||
+      (auth.user.role === "WAITER" && settings.WAITER_CAMERA_VIEW);
+    if (!allowed) {
+      return NextResponse.json({ error: "Not allowed for this role" }, { status: 403 });
+    }
 
     const { id } = await context.params;
     const cameraId = uuidSchema.parse(id);

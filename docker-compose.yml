@@ -77,10 +77,10 @@ services:
       API_BASE_URL: "http://web:3000"
       VISION_SHARED_SECRET: "${VISION_SHARED_SECRET:?Set VISION_SHARED_SECRET in .env}"
       ZONES_FILE: "/data/zones.json"
-      TUNING_LOG_PATH: "/data/tuning.csv"
+      TUNING_LOG_PATH: "/tmp/tuning.csv"
       VISION_DEMO: "${VISION_DEMO:-false}"
       VISION_FORCE_FILE: "${VISION_FORCE_FILE:-false}"
-      YOLO_MODEL: "${YOLO_MODEL:-yolo11n.pt}"
+      YOLO_MODEL: "${YOLO_MODEL:-/app/models/yolox_nano.onnx}"
       YOLO_CONF: "${YOLO_CONF:-0.35}"
       SNAPSHOT_FPS: "${SNAPSHOT_FPS:-1}"
     volumes:

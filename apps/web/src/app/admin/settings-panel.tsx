@@ -55,6 +55,7 @@ export function SettingsPanel({
           settings.TAX_MODE = String(form.get("TAX_MODE") ?? "exclusive");
           settings.BILL_NUMBER_PREFIX = String(form.get("BILL_NUMBER_PREFIX") ?? "DS");
           settings.SHADOW_MODE = form.get("SHADOW_MODE") === "on";
+          settings.WAITER_CAMERA_VIEW = form.get("WAITER_CAMERA_VIEW") === "on";
           void run(async () => {
             await apiFetch("/api/admin/settings", {
               method: "PUT",
@@ -109,6 +110,7 @@ export function SettingsPanel({
             Bill prefix
             <input
               name="BILL_NUMBER_PREFIX"
+                maxLength={4}
               defaultValue={data.settings.BILL_NUMBER_PREFIX}
               className={`${INPUT} mt-1`}
             />
@@ -116,6 +118,14 @@ export function SettingsPanel({
           <label className="flex items-center gap-2 self-end pb-2 text-xs text-slate-300">
             <input name="SHADOW_MODE" type="checkbox" defaultChecked={data.settings.SHADOW_MODE} />
             Shadow mode (pilot: keep paper as backup)
+          </label>
+          <label className="flex items-center gap-2 self-end pb-2 text-xs text-slate-300">
+            <input
+              name="WAITER_CAMERA_VIEW"
+              type="checkbox"
+              defaultChecked={data.settings.WAITER_CAMERA_VIEW}
+            />
+            Waiters can view camera snapshots
           </label>
         </div>
         <button type="submit" className={`${BTN_PRIMARY} mt-3`} disabled={busy}>

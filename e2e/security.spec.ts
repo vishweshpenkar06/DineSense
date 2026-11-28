@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_PASSWORD, WAITER_PIN, loginPin } from "./helpers";
+import { ADMIN_PASSWORD, CHEF_PIN, WAITER_PIN, loginPin } from "./helpers";
 
 test("anonymous health is minimal and protected routes require a session", async ({ request }) => {
   const health = await request.get("/api/health");
@@ -45,5 +45,37 @@ test("wrong role and deactivated sessions cannot use staff APIs", async ({ brows
     });
   }
 
+  await waiterContext.close();
+});
+
+test("camera snapshots are limited to admin and permitted waiters", async ({ browser, request }) => {
+  await request.post("/api/auth/login", { data: { password: ADMIN_PASSWORD } });
+  const cameras = ((await (await request.get("/api/admin/cameras")).json()) as {
+    cameras: Array<{ id: string }>;
+  }).cameras;
+  expect(cameras.length).toBeGreaterThan(0);
+  const cameraId = cameras[0]!.id;
+
+  const chefContext = await browser.newContext();
+  const chef = await chefContext.newPage();
+  await loginPin(chef, CHEF_PIN);
+  await expect(chef).toHaveURL(/\/chef$/);
+  const chefStatus = await chef.evaluate(async (id) => {
+    const response = await fetch(`/api/camera/${id}/snapshot.jpg`);
+    return response.status;
+  }, cameraId);
+  expect(chefStatus).toBe(403);
+
+  const waiterContext = await browser.newContext();
+  const waiter = await waiterContext.newPage();
+  await loginPin(waiter, WAITER_PIN);
+  await expect(waiter).toHaveURL(/\/waiter$/);
+  const waiterStatus = await waiter.evaluate(async (id) => {
+    const response = await fetch(`/api/camera/${id}/snapshot.jpg`);
+    return response.status;
+  }, cameraId);
+  expect(waiterStatus).toBe(200);
+
+  await chefContext.close();
   await waiterContext.close();
 });

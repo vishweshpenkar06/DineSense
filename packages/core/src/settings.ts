@@ -12,6 +12,7 @@ export type Settings = {
   TICKET_RED_S: number;
   VISION_EVENT_RETENTION_DAYS: number;
   SHADOW_MODE: boolean;
+  WAITER_CAMERA_VIEW: boolean;
   BUSINESS_DAY_START: string;
   TAX_RATE_PERCENT: number;
   SERVICE_CHARGE_PERCENT: number;
@@ -31,6 +32,7 @@ export const DEFAULT_SETTINGS: Settings = {
   TICKET_RED_S: 1200,
   VISION_EVENT_RETENTION_DAYS: 30,
   SHADOW_MODE: false,
+  WAITER_CAMERA_VIEW: true,
   BUSINESS_DAY_START: "05:00",
   TAX_RATE_PERCENT: 0,
   SERVICE_CHARGE_PERCENT: 0,
@@ -80,8 +82,15 @@ export function mergeSettings(raw: Record<string, unknown> | null | undefined): 
     merged.SHADOW_MODE = shadow === "true";
   }
 
+  const waiterCamera = raw.WAITER_CAMERA_VIEW;
+  if (typeof waiterCamera === "boolean") {
+    merged.WAITER_CAMERA_VIEW = waiterCamera;
+  } else if (waiterCamera === "true" || waiterCamera === "false") {
+    merged.WAITER_CAMERA_VIEW = waiterCamera === "true";
+  }
+
   const prefix = raw.BILL_NUMBER_PREFIX;
-  if (typeof prefix === "string" && /^[A-Za-z0-9]{1,8}$/.test(prefix)) {
+  if (typeof prefix === "string" && /^[A-Za-z0-9]{1,4}$/.test(prefix)) {
     merged.BILL_NUMBER_PREFIX = prefix.toUpperCase();
   }
 
