@@ -26,7 +26,7 @@ After the migration fix, `e2e` still failed on `cameras.spec.ts` and the camera 
 
 ## Third CI failure
 
-`zones.json` is git-ignored and is generated locally by `make_demo.py`. CI never generated it, so the vision service had no cameras and every frame request returned 404. Added a CI step to generate demo videos/zones from the seeded app config and restart vision. Fixed `make_demo.py` defaults to use the bundled YOLOX model at 416px.
+`zones.json` is git-ignored and is generated locally by `make_demo.py`. CI never generated it, so the vision service had no cameras and every frame request returned 404. Added a CI step to generate demo videos/zones from the seeded app config and restart vision, running the generator as root because the bind-mounted demo directory is not writable by the non-root service user. Fixed `make_demo.py` defaults to use the bundled YOLOX model at 416px.
 
 ## Verification
 
