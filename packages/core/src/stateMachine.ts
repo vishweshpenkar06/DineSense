@@ -178,6 +178,19 @@ export function transition(ctx: TableContext, event: TableEvent, settings: Setti
         },
       ];
 
+      if (
+        ctx.hasOpenSession &&
+        (ctx.hasOrders || ctx.hasUnpaidBill) &&
+        (target === "free" || target === "needs_cleaning")
+      ) {
+        effects.push({
+          kind: "audit",
+          action: "table.manual_set_refused",
+          detail: { from: ctx.state, to: target, reason: "unpaid" },
+        });
+        return { state: ctx.state, changed: false, effects };
+      }
+
       if (target === ctx.state && target !== "free") {
         return { state: ctx.state, changed: false, effects };
       }

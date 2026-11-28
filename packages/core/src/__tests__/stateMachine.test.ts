@@ -233,6 +233,24 @@ describe("transition: MANUAL_SET", () => {
     expect(close).toMatchObject({ reason: "VOID" });
   });
 
+  it.each(["free", "needs_cleaning"] as const)(
+    "refuses to hide a visit with live orders when manually set to %s",
+    (target) => {
+      const result = run("ordered", { type: "MANUAL_SET", at: AT, target }, { hasOrders: true });
+      expect(result.state).toBe("ordered");
+      expect(result.changed).toBe(false);
+      expect(kinds(result.effects)).not.toContain("closeSession");
+      expect(kinds(result.effects)).not.toContain("cancelOpenTasks");
+    },
+  );
+
+  it("refuses to free a visit with an unpaid bill", () => {
+    const result = run("dining", { type: "MANUAL_SET", at: AT, target: "free" }, { hasUnpaidBill: true });
+    expect(result.state).toBe("dining");
+    expect(result.changed).toBe(false);
+    expect(kinds(result.effects)).not.toContain("closeSession");
+  });
+
   it("does not create a session when manually setting free", () => {
     const result = run("free", { type: "MANUAL_SET", at: AT, target: "free" }, { hasOpenSession: false });
     expect(result.state).toBe("free");

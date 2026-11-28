@@ -8,6 +8,7 @@ import {
   type ReportFloorDto,
   type ReportHourDto,
   type ReportPaymentDto,
+  type ReportCorrectionDto,
   type ReportPreset,
   type ReportSummaryDto,
   type ReportTaxLineDto,
@@ -41,7 +42,7 @@ function average(values: number[]): number | null {
 
 export async function getReportSummary(query: ReportQuery): Promise<ReportSummaryDto> {
   const range = await resolveRange(query);
-  const [bills, orders, sessions, tasks] = await Promise.all([
+  const [bills, orders, sessions, tasks, audits] = await Promise.all([
     prisma.bill.findMany({
       where: { status: "PAID", paidAt: { gte: range.startUtc, lt: range.endUtc } },
       include: {
@@ -76,6 +77,16 @@ export async function getReportSummary(query: ReportQuery): Promise<ReportSummar
         OR: [{ ackAt: { not: null } }, { doneAt: { not: null } }],
       },
       select: { createdAt: true, ackAt: true, doneAt: true },
+    }),
+    prisma.auditLog.findMany({
+      where: {
+        createdAt: { gte: range.startUtc, lt: range.endUtc },
+        action: {
+          in: ["bill.voided", "bill.reopened", "order_item.cancelled", "table.manual_set"],
+        },
+      },
+      include: { actor: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -178,6 +189,35 @@ export async function getReportSummary(query: ReportQuery): Promise<ReportSummar
     })
     .filter((value) => value >= 0);
 
+  const corrections: ReportCorrectionDto[] = audits.map((audit) => {
+    const detail =
+      audit.detail && typeof audit.detail === "object"
+        ? (audit.detail as Record<string, unknown>)
+        : {};
+    const amountPaise = typeof detail.totalPaise === "number" ? detail.totalPaise : 0;
+    const reason = typeof detail.reason === "string" ? detail.reason : "";
+    const labels: Record<string, string> = {
+      "bill.voided": "Bill voided",
+      "bill.reopened": "Bill reopened",
+      "order_item.cancelled": "Item cancelled",
+      "table.manual_set": "Manual table change",
+    };
+    const kinds: Record<string, ReportCorrectionDto["kind"]> = {
+      "bill.voided": "void_bill",
+      "bill.reopened": "reopen_bill",
+      "order_item.cancelled": "cancel_item",
+      "table.manual_set": "manual_set",
+    };
+    return {
+      kind: kinds[audit.action] ?? "manual_set",
+      label: labels[audit.action] ?? audit.action,
+      amountPaise,
+      reason,
+      staff: audit.actor?.name ?? "System",
+      at: audit.createdAt.toISOString(),
+    };
+  });
+
   return {
     from: range.from,
     to: range.to,
@@ -197,6 +237,7 @@ export async function getReportSummary(query: ReportQuery): Promise<ReportSummar
     byFloor: [...floors.values()].sort((a, b) => b.earningsPaise - a.earningsPaise),
     byHour: [...hours.values()].sort((a, b) => a.hour - b.hour),
     byPayment: [...payments.values()].sort((a, b) => b.amountPaise - a.amountPaise),
+    corrections,
     operations: {
       avgSeatedToFirstOrderS: average(seatedToFirst),
       avgOrderToReadyS: average(orderToReady),
@@ -275,6 +316,21 @@ export async function getReportCsv(query: ReportQuery): Promise<{ filename: stri
         paymentSummary,
       ]);
     }
+  }
+
+  const summary = await getReportSummary(query);
+  rows.push([]);
+  rows.push([], ["Voids and corrections"]);
+  rows.push(["kind", "label", "amount_paise", "reason", "staff", "at"]);
+  for (const correction of summary.corrections) {
+    rows.push([
+      correction.kind,
+      correction.label,
+      correction.amountPaise,
+      correction.reason,
+      correction.staff,
+      correction.at,
+    ]);
   }
 
   return {

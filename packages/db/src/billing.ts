@@ -667,12 +667,15 @@ export async function voidBill(input: {
 }): Promise<{ billId: string; tableId: string | null }> {
   if (!input.reason.trim()) throw new DomainError("A reason is required to void a bill");
   const now = new Date();
+  const settings = await loadSettings();
 
   const result = await prisma.$transaction(async (tx) => {
     const session = await sessionTx(tx, input.sessionId);
-    const bill = await tx.bill.findUnique({ where: { sessionId: session.id } });
-    if (!bill) throw new NotFoundError("bill");
+    let bill = await tx.bill.findUnique({ where: { sessionId: session.id } });
+    if (!bill) bill = await ensureBillTx(tx, session, settings, now);
     if (bill.status !== "OPEN") throw new ConflictError("Only open bills can be voided");
+    const charges = await computeCharges(tx, session, settings);
+    await persistBill(tx, bill.id, charges.totals, settings, charges.adjustments);
 
     await tx.bill.update({ where: { id: bill.id }, data: { status: "VOID" } });
     if (!session.closedAt) {
@@ -681,12 +684,20 @@ export async function voidBill(input: {
         data: { closedAt: now, closeReason: "VOID" },
       });
     }
+    await tx.orderItem.updateMany({
+      where: { order: { sessionId: session.id }, cancelled: false },
+      data: { cancelled: true },
+    });
+    await tx.order.updateMany({
+      where: { sessionId: session.id, status: { not: "CANCELLED" } },
+      data: { status: "CANCELLED" },
+    });
+    await tx.task.updateMany({
+      where: { sessionId: session.id, status: { in: [...OPEN_TASK_STATUSES] } },
+      data: { status: "CANCELLED" },
+    });
     if (session.tableId) {
       await tx.diningTable.update({ where: { id: session.tableId }, data: { state: "free" } });
-      await tx.task.updateMany({
-        where: { sessionId: session.id, status: { in: [...OPEN_TASK_STATUSES] } },
-        data: { status: "CANCELLED" },
-      });
     }
     await tx.auditLog.create({
       data: {

@@ -3,7 +3,7 @@
 import { Brand, BrandMark } from "@/components/brand";
 import { ConnectionBadge } from "@/components/connection-badge";
 import { ShiftBar } from "@/components/shift-bar";
-import type { SnapshotTable, SnapshotTask } from "@dinesense/core";
+import type { SnapshotTable, SnapshotTask, TableState } from "@dinesense/core";
 import { errorMessage, postJson } from "@/lib/client";
 import { useSnapshotLive } from "@/lib/live";
 import {
@@ -476,11 +476,17 @@ export default function WaiterPage() {
                       postJson(`/api/sessions/${table.session?.id}/move`, { tableId: targetId }),
                     )
                   }
-                  onStatus={(state) =>
-                    act(`state-${table.id}`, () =>
+                  onStatus={(state) => {
+                    if (
+                      (state === "free" || state === "needs_cleaning") &&
+                      !window.confirm(`Set table ${table.label} to ${STATE_LABEL[state as TableState]}?`)
+                    ) {
+                      return;
+                    }
+                    void act(`state-${table.id}`, () =>
                       postJson(`/api/tables/${table.id}/state`, { state }),
-                    )
-                  }
+                    );
+                  }}
                 />
               ))}
             </div>
@@ -633,13 +639,14 @@ function TableCard({
               }}
             >
               <option value="">Set status…</option>
-              {(["occupied", "needs_order", "dining", "bill_requested", "needs_cleaning", "free"] as const).map(
-                (state) => (
-                  <option key={state} value={state}>
-                    {STATE_LABEL[state]}
-                  </option>
-                ),
-              )}
+              {(table.session
+                ? (["occupied", "needs_order", "dining", "bill_requested"] as const)
+                : (["occupied", "free"] as const)
+              ).map((state) => (
+                <option key={state} value={state}>
+                  {STATE_LABEL[state]}
+                </option>
+              ))}
             </select>
           </div>
         </details>

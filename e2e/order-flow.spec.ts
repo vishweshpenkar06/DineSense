@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CHEF_PIN, WAITER_PIN, addFirstVariant, kitchenTicketsFor, loginAdminApi, loginPin, openTableOrder, resetTables, tableCard } from "./helpers";
+import { CHEF_PIN, RECEPTIONIST_PIN, WAITER_PIN, addFirstVariant, kitchenTicketsFor, loginAdminApi, loginPin, openTableOrder, resetTables, tableCard } from "./helpers";
 
 test("waiter → chef → waiter → bill across two devices", async ({ browser, request }) => {
   await loginAdminApi(request);
@@ -43,6 +43,48 @@ test("waiter → chef → waiter → bill across two devices", async ({ browser,
 
   await waiterContext.close();
   await chefContext.close();
+});
+
+test("staff cannot free a table with an unpaid order", async ({ browser, request }) => {
+  await loginAdminApi(request);
+  await resetTables(request);
+
+  const waiterContext = await browser.newContext();
+  const waiter = await waiterContext.newPage();
+  await loginPin(waiter, WAITER_PIN);
+  await openTableOrder(waiter, "G2");
+  await addFirstVariant(waiter);
+  const tableId = new URL(waiter.url()).searchParams.get("tableId");
+  expect(tableId).toBeTruthy();
+  await waiter.getByRole("button", { name: "Send to kitchen" }).click();
+  await waiter.waitForURL(/\/waiter$/);
+
+  const waiterFree = await waiter.evaluate(async (id) => {
+    const response = await fetch(`/api/tables/${id}/state`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ state: "free" }),
+    });
+    return response.status;
+  }, tableId);
+  expect(waiterFree).toBe(409);
+
+  const receptionContext = await browser.newContext();
+  const reception = await receptionContext.newPage();
+  await loginPin(reception, RECEPTIONIST_PIN);
+  await expect(reception).toHaveURL(/\/reception$/);
+  const receptionFree = await reception.evaluate(async (id) => {
+    const response = await fetch(`/api/tables/${id}/state`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ state: "free" }),
+    });
+    return response.status;
+  }, tableId);
+  expect(receptionFree).toBe(409);
+
+  await waiterContext.close();
+  await receptionContext.close();
 });
 
 test("queued order survives a failed flush while online", async ({ browser, request }) => {

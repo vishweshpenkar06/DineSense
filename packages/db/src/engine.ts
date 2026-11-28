@@ -11,7 +11,7 @@ import {
 import { Prisma } from "@prisma/client";
 import type { TableState as DbTableState, TaskStatus as DbTaskStatus } from "@prisma/client";
 import { prisma } from "./client";
-import { NotFoundError } from "./errors";
+import { ConflictError, NotFoundError } from "./errors";
 import { notify } from "./notify";
 
 const OPEN_TASK_STATUSES: DbTaskStatus[] = ["OPEN", "ACK", "SNOOZED"];
@@ -256,11 +256,19 @@ export async function setTableStateManually(input: {
 }): Promise<ApplyResult> {
   const { loadSettings } = await import("./settings");
   const settings = await loadSettings();
-  return applyTableEvent({
+  const result = await applyTableEvent({
     tableId: input.tableId,
     event: { type: "MANUAL_SET", at: input.at ?? new Date(), target: input.target },
     settings,
     actorId: input.actorId ?? null,
     openedBy: "MANUAL",
   });
+  if (
+    result.effects.some(
+      (effect) => effect.kind === "audit" && effect.action === "table.manual_set_refused",
+    )
+  ) {
+    throw new ConflictError("Cannot close a visit with unpaid food or an unpaid bill. Pay or void it first.");
+  }
+  return result;
 }

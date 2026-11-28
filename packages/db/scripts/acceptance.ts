@@ -368,6 +368,49 @@ check(
   (await prisma.auditLog.count({ where: { entityId: table.id, action: "table.manual_set" } })) >= 1,
 );
 
+await resetRuntime();
+await sim("occupied");
+const protectedSession = await openSession();
+await placeOrder({
+  tableId,
+  items: [{ variantId, qty: 1 }],
+  clientKey: randomUUID(),
+});
+let manualFreeRefused = false;
+try {
+  await setTableStateManually({ tableId, target: "free" });
+} catch {
+  manualFreeRefused = true;
+}
+check(
+  "waiter cannot free a table with an unpaid order",
+  manualFreeRefused && (await tableRow()).state !== "free" && protectedSession !== null,
+);
+check(
+  "the visit remains open after the refused free",
+  (await prisma.session.count({ where: { id: protectedSession?.id ?? "", closedAt: null } })) === 1,
+);
+
+const ticketsBeforeVoid = await getKitchenTickets();
+check(
+  "an unpaid order has a live kitchen ticket",
+  ticketsBeforeVoid.some((ticket) => ticket.tableLabel === "G3" && ticket.status !== "CANCELLED"),
+);
+if (protectedSession) {
+  await voidBill({ sessionId: protectedSession.id, reason: "test void" });
+}
+check("voiding an unpaid visit frees the table", (await tableRow()).state === "free");
+check(
+  "voiding cancels live kitchen tickets",
+  !(await getKitchenTickets()).some((ticket) => ticket.tableLabel === "G3" && ticket.status !== "CANCELLED"),
+);
+const correctionDay = businessDateString(new Date(), (await loadSettings()).BUSINESS_DAY_START);
+const correctionReport = await getReportSummary({ from: correctionDay, to: correctionDay });
+check(
+  "void appears in Voids and corrections",
+  correctionReport.corrections.some((row) => row.reason === "test void" && row.kind === "void_bill"),
+);
+
 // 9. Alert escalation and repeat alerts.
 await resetRuntime();
 await sim("occupied");

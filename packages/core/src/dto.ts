@@ -409,6 +409,15 @@ export type ReportTaxLineDto = {
   taxPaise: number;
 };
 
+export type ReportCorrectionDto = {
+  kind: "void_bill" | "cancel_item" | "manual_set" | "reopen_bill";
+  label: string;
+  amountPaise: number;
+  reason: string;
+  staff: string;
+  at: string;
+};
+
 export type ReportSummaryDto = {
   from: string;
   to: string;
@@ -428,6 +437,7 @@ export type ReportSummaryDto = {
   byFloor: ReportFloorDto[];
   byHour: ReportHourDto[];
   byPayment: ReportPaymentDto[];
+  corrections: ReportCorrectionDto[];
   operations: {
     avgSeatedToFirstOrderS: number | null;
     avgOrderToReadyS: number | null;
