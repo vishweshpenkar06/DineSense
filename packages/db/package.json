@@ -16,7 +16,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "acceptance": "tsx scripts/acceptance.ts",
     "check:payments": "tsx scripts/check-overpayments.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:reencrypt-cameras": "tsx scripts/reencrypt-camera-urls.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

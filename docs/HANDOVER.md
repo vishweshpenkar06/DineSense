@@ -19,7 +19,7 @@ This release is a local-first appliance for one restaurant. The mini PC runs Pos
 ## Before first live service
 
 1. Confirm the accountant’s registration type, GST rate, HSN/SAC, numbering and correction policy.
-2. Set GSTIN/FSSAI and UPI details in Admin → Settings.
+2. Set GSTIN/FSSAI and UPI details in Admin → Settings. If `ENCRYPTION_KEY` changes, run `npm run db:reencrypt-cameras -w @dinesense/db` with the old key in `OLD_ENCRYPTION_KEYS` before restarting.
 3. Import or confirm `data/menu-chinese-chef.csv` and both floor prices.
 4. Confirm 11 tables, Ground non-AC and First AC.
 5. Configure an off-machine backup target (`BACKUP_USB_PATH` or `BACKUP_RCLONE_REMOTE`) and verify `Admin → Health` no longer warns.
