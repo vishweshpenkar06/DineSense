@@ -169,6 +169,11 @@ export default function ReceptionPage() {
   const enteredPaise = rupeesToPaise(cash) + rupeesToPaise(upi) + rupeesToPaise(card);
   const changePaise = Math.max(0, enteredPaise - totalPaise);
 
+  async function issue() {
+    if (!selected) return;
+    await act(() => postJson<BillViewDto>(`/api/bills/${selected}/issue`, {}));
+  }
+
   async function pay() {
     if (!selected || !bill) return;
     const payments = [
@@ -453,7 +458,7 @@ export default function ReceptionPage() {
               </div>
               <hr />
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Bill: {bill.bill?.billNumber ?? "DRAFT"}</span>
+                <span>{bill.bill?.billNumber ? `Bill: ${bill.bill.billNumber}` : "ESTIMATE - not a tax invoice"}</span>
                 <span>
                   {ist(bill.bill?.paidAt ?? new Date().toISOString())}
                 </span>
@@ -877,6 +882,19 @@ export default function ReceptionPage() {
                           After the customer pays, enter the UPI amount and confirm.
                         </p>
                       </div>
+                    </div>
+                  ) : null}
+                  {bill.bill?.status === "OPEN" && !bill.bill.billNumber ? (
+                    <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent/[0.06] px-3 py-2 text-xs text-accent">
+                      <span>Estimate only. Issue a bill number before the tax invoice.</span>
+                      <button
+                        type="button"
+                        className={BTN}
+                        disabled={busy}
+                        onClick={() => void issue()}
+                      >
+                        Issue bill
+                      </button>
                     </div>
                   ) : null}
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">

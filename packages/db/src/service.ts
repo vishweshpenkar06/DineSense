@@ -11,6 +11,7 @@ import type {
 import { taskText, type Settings } from "@dinesense/core";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./client";
+import { assertBillEditableTx } from "./billing";
 import { ConflictError, DomainError, NotFoundError } from "./errors";
 import { applyTableEventTx, emitApplied, type ApplyResult } from "./engine";
 import { notify } from "./notify";
@@ -394,6 +395,7 @@ export async function cancelOrderItem(input: {
       include: { order: { select: { id: true, status: true, sessionId: true } } },
     });
     if (!item) throw new NotFoundError("order item");
+    await assertBillEditableTx(tx, item.order.sessionId);
     if (item.cancelled) return { orderId: item.orderId, orderCancelled: false };
     if (item.order.status === "SERVED" || item.order.status === "CANCELLED") {
       throw new ConflictError("This ticket can no longer be changed");

@@ -1,6 +1,7 @@
 import { businessDayStart } from "@dinesense/core";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./client";
+import { assertBillEditableTx } from "./billing";
 import { ConflictError, DomainError, NotFoundError } from "./errors";
 import { applyTableEventTx, emitApplied, type ApplyResult } from "./engine";
 import { notify } from "./notify";
@@ -62,6 +63,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     if (!session || session.closedAt) {
       throw new ConflictError("No open visit — seat the table first");
     }
+    await assertBillEditableTx(tx, session.id);
 
     let tableId: string | null = null;
     let zoneId: string;

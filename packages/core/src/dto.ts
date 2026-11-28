@@ -230,10 +230,11 @@ export type BillPaymentDto = {
 
 export type BillRecordDto = {
   id: string;
-  billNumber: string;
+  billNumber: string | null;
   status: "OPEN" | "PAID" | "VOID";
   taxRatePercent: number;
   taxInclusive: boolean;
+  issuedAt: string | null;
   paidAt: string | null;
   totals: BillTotals;
   adjustments: BillAdjustmentDto[];

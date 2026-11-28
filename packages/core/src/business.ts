@@ -37,6 +37,14 @@ export function businessDateString(at: Date, startHHMM: string): string {
   return formatDate(ist.getUTCFullYear(), ist.getUTCMonth() + 1, ist.getUTCDate());
 }
 
+export function financialYearLabel(at: Date): string {
+  const ist = new Date(at.getTime() + IST_OFFSET_MS);
+  const year = ist.getUTCFullYear();
+  const startYear = ist.getUTCMonth() >= 3 ? year : year - 1;
+  const end = (startYear + 1) % 100;
+  return `${String(startYear % 100).padStart(2, "0")}-${String(end).padStart(2, "0")}`;
+}
+
 export function shiftBusinessDate(date: string, days: number): string {
   const [year, month, day] = parseDate(date);
   const shifted = new Date(Date.UTC(year, month - 1, day + days));

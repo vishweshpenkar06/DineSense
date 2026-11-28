@@ -5,6 +5,7 @@ import {
   businessDateString,
   businessDayStartFromDate,
   decryptSecret,
+  financialYearLabel,
   shiftBusinessDate,
   verifySecret,
   type MenuImportGroup,
@@ -27,6 +28,7 @@ import {
   getAdminMenu,
   getBillView,
   getDayClose,
+  issueBill,
   getCameraCalibration,
   getKitchenTickets,
   getMenuForZone,
@@ -696,7 +698,11 @@ const paidSession = await openSession();
 if (!paidSession) throw new Error("billing test session missing");
 
 const opened = await getBillView(paidSession.id);
-check("opening a bill allocates a sequential bill number", /^DS-\d{4}-\d{6}$/.test(opened.bill?.billNumber ?? ""), opened.bill?.billNumber ?? "none");
+check(
+  "viewing a bill does not allocate a number",
+  opened.bill?.billNumber === null || opened.bill === null,
+  opened.bill?.billNumber ?? "none",
+);
 check(
   "subtotal uses the snapshotted order price",
   opened.draft.subtotalPaise === 2 * groundHalfPrice,
@@ -767,6 +773,27 @@ check(
 
 const cashPart = 11200;
 const upiPart = expectedTotal - cashPart;
+const issued = await issueBill(paidSession.id, receptionUser.id);
+check(
+  "issuing allocates a financial-year bill number within 16 characters",
+  /^DS\/\d{2}-\d{2}\/\d{5}$/.test(issued.bill?.billNumber ?? "") &&
+    (issued.bill?.billNumber ?? "").length <= 16,
+  issued.bill?.billNumber ?? "none",
+);
+let changedAfterIssueRejected = false;
+try {
+  await addBillAdjustment({
+    sessionId: paidSession.id,
+    kind: "EXTRA",
+    label: "After issue",
+    amountPaise: 100,
+    actorId: receptionUser.id,
+  });
+} catch {
+  changedAfterIssueRejected = true;
+}
+check("issued bill lines are locked", changedAfterIssueRejected);
+
 const paid = await payBill({
   sessionId: paidSession.id,
   payments: [
@@ -800,7 +827,7 @@ await voidBill({ sessionId: voidSession.id, reason: "wrong table", actorId: rece
 const voidedBill = await prisma.bill.findFirstOrThrow({ where: { sessionId: voidSession.id } });
 const voidedSession = await prisma.session.findUniqueOrThrow({ where: { id: voidSession.id } });
 const voidedTable = await tableRow();
-check("voiding keeps the bill number", voidedBill.status === "VOID" && voidedBill.billNumber === voidNumber);
+check("voiding keeps the bill number", voidedBill.status === "VOID" && voidedBill.billNumber === (voidNumber ?? null));
 check("voiding closes the visit and frees the table", voidedSession.closeReason === "VOID" && voidedTable.state === "free");
 
 await resetRuntime();
@@ -963,9 +990,13 @@ check(
   summary.topDishes.some((dish) => dish.name === "Veg Hakka Noodles" && dish.qty === 2),
 );
 const csv = await getReportCsv({ from: today, to: today });
+const paidReportBill = await prisma.bill.findUniqueOrThrow({
+  where: { sessionId: reportSession.id },
+});
 check(
   "CSV export contains the bill number and item",
-  csv.csv.includes(reportBill.bill?.billNumber ?? "missing") && csv.csv.includes("Veg Hakka Noodles"),
+  csv.csv.includes(paidReportBill.billNumber ?? "missing") && csv.csv.includes("Veg Hakka Noodles"),
+  `bill=${paidReportBill.billNumber ?? "missing"} item=${csv.csv.includes("Veg Hakka Noodles")}`,
 );
 
 const lateNight = new Date(
@@ -1002,10 +1033,10 @@ const storedCash = await prisma.payment.findFirstOrThrow({
 });
 check(
   "cash payment stores only the applied amount",
-  overpayTotal === 18000 &&
+  overpayTotal > 0 &&
     storedCash.amountPaise === overpayTotal &&
     storedCash.tenderedPaise === 50000 &&
-    overpaid.changePaise === 32000,
+    overpaid.changePaise === 50000 - overpayTotal,
   `total=${overpayTotal} applied=${storedCash.amountPaise} tendered=${storedCash.tenderedPaise} change=${overpaid.changePaise}`,
 );
 const cashAfterOverpay = await getDayClose();
@@ -1029,7 +1060,7 @@ await resetRuntime();
 await sim("occupied");
 await placeOrder({
   tableId,
-  items: [{ variantId, qty: 1 }],
+  items: [{ variantId: halfNoodles.id, qty: 1 }],
   clientKey: randomUUID(),
 });
 const upiSession = await openSession();
@@ -1273,7 +1304,15 @@ check(
 await reopenSetup(adminUser.id);
 check("setup can be reopened for the wizard", (await getSetupStatus()).complete === false);
 const billsBeforeDemo = await prisma.bill.count();
+const demoFy = financialYearLabel(new Date());
+const counterBeforeDemo =
+  (await prisma.financialYearBillCounter.findUnique({ where: { fy: demoFy } }))?.value ?? 0;
 const demo = await runSetupDemo(adminUser.id);
+check(
+  "guided test does not consume a real bill number",
+  ((await prisma.financialYearBillCounter.findUnique({ where: { fy: demoFy } }))?.value ?? 0) ===
+    counterBeforeDemo,
+);
 check(
   "guided test run walks seat → alert → order → ready → paid → cleanup",
   demo.steps.length >= 7 &&

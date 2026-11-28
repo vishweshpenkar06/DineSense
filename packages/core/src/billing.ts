@@ -274,9 +274,10 @@ function calculateBillWithBreakup(input: BillInput): BillTotals {
   };
 }
 
-export function formatBillNumber(prefix: string, year: number, sequence: number): string {
-  const safePrefix = /^[A-Za-z0-9]{1,8}$/.test(prefix) ? prefix.toUpperCase() : "DS";
-  return `${safePrefix}-${year}-${String(Math.max(1, Math.floor(sequence))).padStart(6, "0")}`;
+export function formatBillNumber(prefix: string, financialYear: string, sequence: number): string {
+  const safePrefix = /^[A-Za-z0-9]{1,4}$/.test(prefix) ? prefix.toUpperCase() : "DS";
+  const safeYear = /^\d{2}-\d{2}$/.test(financialYear) ? financialYear : "00-00";
+  return `${safePrefix}/${safeYear}/${String(Math.max(1, Math.floor(sequence))).padStart(5, "0")}`;
 }
 
 export function paidTotal(payments: PaymentInput[]): number {

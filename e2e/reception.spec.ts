@@ -1,6 +1,32 @@
 import { expect, test } from "@playwright/test";
 import { RECEPTIONIST_PIN, WAITER_PIN, addFirstVariant, loginAdminApi, loginPin, openTableOrder, resetTables } from "./helpers";
 
+test("bill is an estimate until issued", async ({ browser, request }) => {
+  await loginAdminApi(request);
+  await resetTables(request);
+
+  const waiterContext = await browser.newContext();
+  const waiter = await waiterContext.newPage();
+  await loginPin(waiter, WAITER_PIN);
+  await openTableOrder(waiter, "G4");
+  await addFirstVariant(waiter);
+  await waiter.getByRole("button", { name: "Send to kitchen" }).click();
+  await waiter.waitForURL(/\/waiter$/);
+
+  const receptionContext = await browser.newContext();
+  const reception = await receptionContext.newPage();
+  await loginPin(reception, RECEPTIONIST_PIN);
+  await expect(reception).toHaveURL(/\/reception$/);
+  await reception.getByRole("button", { name: /G4/ }).first().click();
+  await expect(reception.locator(".bill-print")).toContainText("ESTIMATE - not a tax invoice");
+
+  await reception.getByRole("button", { name: "Issue bill" }).click();
+  await expect(reception.locator(".bill-print")).toContainText(/Bill: DS\/\d{2}-\d{2}\/\d{5}/);
+
+  await waiterContext.close();
+  await receptionContext.close();
+});
+
 test("overpaid cash prints tender and change", async ({ browser, request }) => {
   await loginAdminApi(request);
   await resetTables(request);

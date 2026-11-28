@@ -160,6 +160,7 @@ export async function runSetupDemo(actorId: string | null): Promise<SetupDemoRes
           ? [{ method: "CASH", amountPaise: bill.draft.totalPaise }]
           : [],
       actorId,
+      skipIssue: true,
     });
     steps.push({
       label: "Bill paid",

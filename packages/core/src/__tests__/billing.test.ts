@@ -23,9 +23,10 @@ describe("rounding and percentages", () => {
   });
 
   it("formats bill numbers with six digits", () => {
-    expect(formatBillNumber("DS", 2026, 123)).toBe("DS-2026-000123");
-    expect(formatBillNumber("ds", 2026, 1)).toBe("DS-2026-000001");
-    expect(formatBillNumber("bad prefix!", 2026, 7)).toBe("DS-2026-000007");
+    expect(formatBillNumber("DS", "26-27", 123)).toBe("DS/26-27/00123");
+    expect(formatBillNumber("ds", "26-27", 1)).toBe("DS/26-27/00001");
+    expect(formatBillNumber("bad prefix!", "26-27", 7)).toBe("DS/26-27/00007");
+    expect(formatBillNumber("ABCD", "26-27", 1)).toHaveLength(16);
   });
 });
 

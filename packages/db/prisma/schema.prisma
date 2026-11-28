@@ -323,7 +323,9 @@ model OrderItem {
 model Bill {
   id            String     @id @default(uuid())
   sessionId     String     @unique
-  billNumber    String     @unique
+  billNumber    String?    @unique
+  issuedAt      DateTime?
+  linesSnapshot Json?
   subtotal      Int        @default(0)
   extras        Int        @default(0)
   surcharge     Int        @default(0)
@@ -351,6 +353,12 @@ model Bill {
 
 model BillCounter {
   year      Int      @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model FinancialYearBillCounter {
+  fy        String   @id
   value     Int      @default(0)
   updatedAt DateTime @updatedAt
 }

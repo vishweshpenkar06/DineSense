@@ -2,6 +2,7 @@ import {
   IST_OFFSET_MS,
   applyPayments,
   calculateBill,
+  financialYearLabel,
   formatBillNumber,
   percentOf,
   taskText,
@@ -226,17 +227,17 @@ async function allocateBillNumber(
   settings: Settings,
   now: Date,
 ): Promise<string> {
-  const year = new Date(now.getTime() + IST_OFFSET_MS).getUTCFullYear();
+  const fy = financialYearLabel(now);
   const rows = await tx.$queryRaw<Array<{ value: number }>>`
-    INSERT INTO "BillCounter" ("year", "value", "updatedAt")
-    VALUES (${year}, 1, NOW())
-    ON CONFLICT ("year") DO UPDATE
-      SET "value" = "BillCounter"."value" + 1, "updatedAt" = NOW()
+    INSERT INTO "FinancialYearBillCounter" ("fy", "value", "updatedAt")
+    VALUES (${fy}, 1, NOW())
+    ON CONFLICT ("fy") DO UPDATE
+      SET "value" = "FinancialYearBillCounter"."value" + 1, "updatedAt" = NOW()
     RETURNING "value"
   `;
   const value = rows[0]?.value;
   if (value === undefined) throw new Error("Could not allocate a bill number");
-  return formatBillNumber(settings.BILL_NUMBER_PREFIX, year, Number(value));
+  return formatBillNumber(settings.BILL_NUMBER_PREFIX, fy, Number(value));
 }
 
 async function ensureBillTx(
@@ -250,16 +251,65 @@ async function ensureBillTx(
   if (existing) return existing;
   if (session.closedAt) throw new ConflictError("Visit is closed and has no bill");
 
-  const billNumber = await allocateBillNumber(tx, settings, now);
   return tx.bill.create({
     data: {
       sessionId: session.id,
-      billNumber,
       status: "OPEN",
       taxRatePercent: settings.TAX_RATE_PERCENT,
       taxInclusive: settings.TAX_MODE === "inclusive",
     },
   });
+}
+
+async function issueBillInTx(
+  tx: Prisma.TransactionClient,
+  session: SessionRow,
+  settings: Settings,
+  now: Date,
+  bill: Prisma.BillGetPayload<Record<string, never>>,
+): Promise<Prisma.BillGetPayload<Record<string, never>>> {
+  if (bill.issuedAt && bill.billNumber) return bill;
+  const charges = await computeCharges(tx, session, settings);
+  await persistBill(tx, bill.id, charges.totals, settings, charges.adjustments);
+  const billNumber = await allocateBillNumber(tx, settings, now);
+  return tx.bill.update({
+    where: { id: bill.id },
+    data: {
+      billNumber,
+      issuedAt: now,
+      linesSnapshot: {
+        items: charges.items,
+        adjustments: charges.adjustments.map(mapAdjustment),
+        totals: charges.totals,
+      } as unknown as Prisma.InputJsonValue,
+    },
+  });
+}
+
+export async function issueBill(
+  sessionId: string,
+  actorId?: string | null,
+): Promise<BillViewDto> {
+  const settings = await loadSettings();
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    const session = await sessionTx(tx, sessionId);
+    let bill = await tx.bill.findUnique({ where: { sessionId: session.id } });
+    if (!bill) bill = await ensureBillTx(tx, session, settings, now);
+    if (bill.status !== "OPEN") throw new ConflictError("Only open bills can be issued");
+    bill = await issueBillInTx(tx, session, settings, now, bill);
+    await tx.auditLog.create({
+      data: {
+        actorId: actorId ?? null,
+        action: "bill.issued",
+        entity: "bill",
+        entityId: bill.id,
+        detail: { billNumber: bill.billNumber },
+      },
+    });
+  });
+  await notify("bill.updated", { sessionId, status: "issued" });
+  return getBillView(sessionId, { create: false });
 }
 
 async function recalcBillTx(
@@ -269,7 +319,7 @@ async function recalcBillTx(
   actorId?: string | null,
 ): Promise<void> {
   const bill = await tx.bill.findUnique({ where: { sessionId: session.id } });
-  if (!bill || bill.status !== "OPEN") return;
+  if (!bill || bill.status !== "OPEN" || bill.issuedAt) return;
   const charges = await computeCharges(tx, session, settings);
   await persistBill(tx, bill.id, charges.totals, settings, charges.adjustments);
   if (actorId !== undefined) {
@@ -321,12 +371,12 @@ export async function getBillView(
   options: { create?: boolean } = {},
 ): Promise<BillViewDto> {
   const settings = await loadSettings();
-  const create = options.create ?? true;
+  const create = options.create ?? false;
 
   await prisma.$transaction(async (tx) => {
     const session = await sessionTx(tx, sessionId);
     let bill = await tx.bill.findUnique({ where: { sessionId: session.id } });
-    if (!bill && create) {
+    if (!bill) {
       bill = await ensureBillTx(tx, session, settings, new Date());
     }
     if (bill?.status === "OPEN") {
@@ -344,6 +394,20 @@ export async function getBillView(
       },
     });
     const charges = await computeCharges(tx, session, settings);
+    type BillSnapshot = {
+      items: BillLineDto[];
+      adjustments: BillAdjustmentDto[];
+      totals: BillTotals;
+    };
+    const snapshot =
+      bill?.issuedAt && bill.linesSnapshot
+        ? (bill.linesSnapshot as unknown as BillSnapshot)
+        : null;
+    const viewItems = snapshot?.items ?? charges.items;
+    const viewAdjustments = snapshot?.adjustments ?? bill?.adjustments.map(mapAdjustment) ?? [];
+    const viewTotals =
+      snapshot?.totals ??
+      (bill ? (bill.status === "OPEN" ? charges.totals : totalsFromBill(bill)) : charges.totals);
     const zone = zoneOf(session);
     const restaurant = await tx.restaurantProfile.findUnique({ where: { id: "default" } });
     const billRequested =
@@ -363,10 +427,10 @@ export async function getBillView(
           status: bill.status,
           taxRatePercent: bill.taxRatePercent,
           taxInclusive: bill.taxInclusive,
+          issuedAt: bill.issuedAt?.toISOString() ?? null,
           paidAt: bill.paidAt?.toISOString() ?? null,
-          totals:
-            bill.status === "OPEN" ? charges.totals : totalsFromBill(bill),
-          adjustments: bill.adjustments.map(mapAdjustment),
+          totals: viewTotals,
+          adjustments: viewAdjustments,
           payments: bill.payments.map(mapPayment),
         }
       : null;
@@ -385,7 +449,7 @@ export async function getBillView(
             isAc: zone.isAc,
           }
         : null,
-      items: charges.items,
+      items: viewItems,
       bill: record,
       draft: record?.totals ?? charges.totals,
       taxRatePercent: record?.taxRatePercent ?? settings.TAX_RATE_PERCENT,
@@ -478,6 +542,16 @@ export async function getOpenBills(): Promise<OpenBillRowDto[]> {
   });
 }
 
+export async function assertBillEditableTx(
+  tx: Prisma.TransactionClient,
+  sessionId: string,
+): Promise<void> {
+  const bill = await tx.bill.findUnique({ where: { sessionId } });
+  if (bill?.issuedAt) {
+    throw new ConflictError("Bill is issued. Void it with a reason before changing the order.");
+  }
+}
+
 export async function addBillAdjustment(input: {
   sessionId: string;
   kind: "EXTRA" | "DISCOUNT";
@@ -491,6 +565,7 @@ export async function addBillAdjustment(input: {
 
   await prisma.$transaction(async (tx) => {
     const session = await sessionTx(tx, input.sessionId);
+    await assertBillEditableTx(tx, session.id);
     const bill = await ensureBillTx(tx, session, settings, now);
     if (bill.status !== "OPEN") throw new ConflictError(`Bill is ${bill.status.toLowerCase()}`);
     const charges = await computeCharges(tx, session, settings);
@@ -547,6 +622,7 @@ export async function removeBillAdjustment(input: {
   const settings = await loadSettings();
   await prisma.$transaction(async (tx) => {
     const session = await sessionTx(tx, input.sessionId);
+    await assertBillEditableTx(tx, session.id);
     const adjustment = await tx.billAdjustment.findUnique({
       where: { id: input.adjustmentId },
       include: { bill: true },
@@ -577,15 +653,19 @@ export async function payBill(input: {
   sessionId: string;
   payments: Array<{ method: "CASH" | "UPI" | "CARD"; amountPaise: number }>;
   actorId?: string | null;
+  skipIssue?: boolean;
 }): Promise<{ bill: BillViewDto; totalPaise: number; paidPaise: number; changePaise: number }> {
   const settings = await loadSettings();
   const now = new Date();
 
   const result = await prisma.$transaction(async (tx) => {
     const session = await sessionTx(tx, input.sessionId);
-    const bill = await ensureBillTx(tx, session, settings, now);
+    let bill = await ensureBillTx(tx, session, settings, now);
     if (bill.status === "PAID") throw new ConflictError("Bill is already paid");
     if (bill.status === "VOID") throw new ConflictError("Bill is void");
+    if (!bill.issuedAt && !input.skipIssue) {
+      bill = await issueBillInTx(tx, session, settings, now, bill);
+    }
 
     const charges = await computeCharges(tx, session, settings);
     await persistBill(tx, bill.id, charges.totals, settings, charges.adjustments);

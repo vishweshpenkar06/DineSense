@@ -3,6 +3,7 @@ import {
   businessDateRange,
   businessDateString,
   businessDayStartFromDate,
+  financialYearLabel,
   resolveReportRange,
   shiftBusinessDate,
 } from "../business";
@@ -13,6 +14,12 @@ describe("business dates", () => {
   it("assigns 02:00 IST to the previous business day", () => {
     const at = new Date("2026-11-15T20:30:00Z"); // 16 Nov 02:00 IST
     expect(businessDateString(at, start)).toBe("2026-11-15");
+  });
+
+  it("rolls the financial year on 1 April IST", () => {
+    expect(financialYearLabel(new Date("2026-03-31T18:29:59Z"))).toBe("25-26");
+    expect(financialYearLabel(new Date("2026-03-31T18:30:00Z"))).toBe("26-27");
+    expect(financialYearLabel(new Date("2026-11-15T10:00:00Z"))).toBe("26-27");
   });
 
   it("starts a new business date at 05:00 IST", () => {
