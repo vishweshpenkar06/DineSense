@@ -8,7 +8,7 @@
 
 ## 0. Rules for the agent (read first)
 
-1. **UI only.** Do not change `apps/web/src/app/api/**`, `packages/**`, `services/**`, `apps/worker/**`, Prisma, the state machine, the 120-second timer, the offline order queue, sound/vibration/wake-lock logic or any endpoint. If a screen needs data it does not have, stop and report; do not invent API changes.
+1. **UI only.** Do not change `apps/web/src/app/api/**`, `packages/**`, `services/**`, `apps/worker/**`, Prisma, the state machine, the 180-second timer, the offline order queue, sound/vibration/wake-lock logic or any endpoint. If a screen needs data it does not have, stop and report; do not invent API changes.
 2. **Do not break the tests.** `e2e/` finds things by role and accessible name. Keep these names exactly, or update the test in the same commit: `Sign in`, `Admin password`, `Send to kitchen`, `Order` (link), `Ready` (button), and the `.bill-print` class. Run `npm run typecheck` and `npm run test:e2e` before every commit.
 3. **Behaviour stays identical; presentation changes.** Same actions, same API calls, same permissions.
 4. **Only the dependencies listed in §3.** Say in the README why each was added.

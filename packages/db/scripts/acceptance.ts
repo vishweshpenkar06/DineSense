@@ -53,6 +53,7 @@ import {
   recordHeartbeat,
   recordVisionEvent,
   requestBill,
+  serveOrder,
   serveSession,
   setTableStateManually,
   setVariantAvailability,
@@ -185,7 +186,7 @@ async function orderOnce() {
   });
 }
 
-// 1. Occupied starts the 120s decision timer.
+// 1. Occupied starts the 180s decision timer.
 await resetRuntime();
 const seatedAt = await sim("occupied");
 const firstTable = await tableRow();
@@ -193,10 +194,10 @@ const firstSession = await openSession();
 check("VISION_OCCUPIED sets the table occupied", firstTable.state === "occupied", firstTable.state);
 check("a visit session is opened", firstSession !== null);
 check(
-  "decision deadline is 120s after seated",
+  "decision deadline is 180s after seated",
   firstSession?.decisionDeadline !== null &&
     firstSession?.decisionDeadline !== undefined &&
-    approx(firstSession.decisionDeadline.getTime(), seatedAt.getTime() + 120_000, 2_000),
+    approx(firstSession.decisionDeadline.getTime(), seatedAt.getTime() + 180_000, 2_000),
   firstSession?.decisionDeadline?.toISOString() ?? "none",
 );
 check(
@@ -270,6 +271,104 @@ check(
   "only one order row exists for the concurrent clientKey",
   (await prisma.order.count({ where: { clientKey: concurrentKey } })) === 1,
 );
+
+const parallelKeys = Array.from({ length: 20 }, () => randomUUID());
+const parallelOrders = await Promise.allSettled(
+  parallelKeys.map((key) =>
+    placeOrder({ tableId, items: [{ variantId, qty: 1 }], clientKey: key }),
+  ),
+);
+check(
+  "20 parallel distinct orders all succeed",
+  parallelOrders.every((entry) => entry.status === "fulfilled"),
+  parallelOrders.filter((entry) => entry.status === "rejected").length + " rejected",
+);
+if (parallelOrders.every((entry) => entry.status === "fulfilled")) {
+  const kotNumbers = parallelOrders
+    .map((entry) => (entry as PromiseFulfilledResult<Awaited<ReturnType<typeof placeOrder>>>).value.kotNumber)
+    .sort((a, b) => a - b);
+  check(
+    "parallel KOT numbers are unique and consecutive",
+    new Set(kotNumbers).size === kotNumbers.length &&
+      kotNumbers.every((value, index) => index === 0 || value === kotNumbers[index - 1]! + 1),
+    kotNumbers.join(","),
+  );
+}
+
+await resetRuntime();
+await sim("occupied");
+const serviceActor = await prisma.user.findFirstOrThrow({ where: { role: "ADMIN" } });
+const twoTicketSession = await openSession();
+if (!twoTicketSession) throw new Error("two-ticket test session missing");
+const firstTicket = await placeOrder({
+  tableId,
+  items: [{ variantId, qty: 1 }],
+  clientKey: randomUUID(),
+});
+await placeOrder({
+  tableId,
+  items: [{ variantId, qty: 1 }],
+  clientKey: randomUUID(),
+});
+await readyOrder(firstTicket.orderId, { id: serviceActor.id, role: "ADMIN" });
+await serveOrder(firstTicket.orderId, { id: serviceActor.id, role: "ADMIN" });
+check(
+  "serving one ready ticket leaves the visit ordered, not food_ready",
+  (await tableRow()).state === "ordered" &&
+    (await prisma.task.count({
+      where: {
+        sessionId: twoTicketSession.id,
+        type: "food_ready",
+        status: { in: ["OPEN", "ACK", "SNOOZED"] },
+      },
+    })) === 0,
+  (await tableRow()).state,
+);
+
+await resetRuntime();
+const raceResults = await Promise.allSettled([
+  sim("occupied"),
+  setTableStateManually({ tableId, target: "dining", actorId: serviceActor.id }),
+]);
+check(
+  "concurrent vision and manual events do not produce server errors",
+  raceResults.every((entry) => entry.status === "fulfilled"),
+  raceResults.filter((entry) => entry.status === "rejected").length + " rejected",
+);
+check(
+  "a table has at most one open session after concurrent events",
+  (await prisma.session.count({ where: { tableId, closedAt: null } })) <= 1,
+);
+
+await resetRuntime();
+await sim("occupied");
+await placeOrder({ tableId, items: [{ variantId, qty: 1 }], clientKey: randomUUID() });
+const cleaningSession = await openSession();
+if (cleaningSession) {
+  await readyOrder((await prisma.order.findFirstOrThrow({ where: { sessionId: cleaningSession.id } })).id, {
+    id: serviceActor.id,
+    role: "ADMIN",
+  });
+  const cleaningTotal = (await getBillView(cleaningSession.id)).draft.totalPaise;
+  await payBill({
+    sessionId: cleaningSession.id,
+    payments: [{ method: "CASH", amountPaise: cleaningTotal }],
+    actorId: serviceActor.id,
+    skipIssue: true,
+  });
+}
+check("paid visit moves to needs_cleaning", (await tableRow()).state === "needs_cleaning");
+await sim("occupied");
+check("camera does not auto-seat while cleaning", (await tableRow()).state === "needs_cleaning");
+await setTableStateManually({ tableId, target: "free", actorId: serviceActor.id });
+await sim("occupied");
+check("camera waits during the 60s grace period", (await tableRow()).state === "free");
+await prisma.diningTable.update({
+  where: { id: tableId },
+  data: { cleanedAt: new Date(Date.now() - 61_000) },
+});
+await sim("occupied");
+check("camera seats a table after the grace period", (await tableRow()).state === "occupied");
 
 // 4. Duplicate vision events are idempotent.
 await resetRuntime();
@@ -481,7 +580,7 @@ await workerTick();
 check("worker heartbeat is written to settings", (await workerLastTick()) !== null);
 
 const settings = await loadSettings();
-check("DECIDE_WINDOW_S is still the required 120s", settings.DECIDE_WINDOW_S === 120);
+check("DECIDE_WINDOW_S is still the required 180s", settings.DECIDE_WINDOW_S === 180);
 
 // ---------------------------------------------------------------------------
 // Phase 3: menu, kitchen lifecycle, cancellation rules, takeaway and moving.
@@ -540,6 +639,8 @@ await resetRuntime();
 await sim("occupied");
 const billOrder = await orderOnce();
 const billSession = await openSession();
+await readyOrder(billOrder.orderId, { id: serviceActor.id, role: "ADMIN" });
+await serveOrder(billOrder.orderId, { id: serviceActor.id, role: "ADMIN" });
 if (billSession) {
   await requestBill({ sessionId: billSession.id, actorId: waiterUser.id });
 }
@@ -660,6 +761,29 @@ for (const category of restoredMenu.categories) {
   }
 }
 check("restocking makes the variant orderable again", restoredVariant);
+
+await setVariantAvailability({
+  variantId: variant.id,
+  zoneId: ground.id,
+  available: false,
+  actorId: adminUser.id,
+});
+const groundAfterFloorToggle = await getMenuForZone(ground.id);
+const firstAfterFloorToggle = await getMenuForZone(firstZone.id);
+const findVariant = (menu: typeof groundAfterFloorToggle) =>
+  menu.categories.flatMap((category) => category.items.flatMap((item) => item.variants)).find((candidate) => candidate.id === variant.id);
+check(
+  "floor stock toggle hides only the selected floor",
+  findVariant(groundAfterFloorToggle)?.available === false &&
+    findVariant(firstAfterFloorToggle)?.available === true,
+  `ground=${findVariant(groundAfterFloorToggle)?.available} ac=${findVariant(firstAfterFloorToggle)?.available}`,
+);
+await setVariantAvailability({
+  variantId: variant.id,
+  zoneId: ground.id,
+  available: true,
+  actorId: adminUser.id,
+});
 
 // ---------------------------------------------------------------------------
 // Phase 4: hand-calculated bills, tax, split payments, void and reopen.
@@ -1090,10 +1214,10 @@ try {
 }
 check("admin rejects an invalid timer value", invalidSettingRejected);
 await updateAdminSettings({
-  settings: { DECIDE_WINDOW_S: 120, TAX_RATE_PERCENT: 0, TAX_MODE: "exclusive" },
+  settings: { DECIDE_WINDOW_S: 180, TAX_RATE_PERCENT: 0, TAX_MODE: "exclusive" },
   actorId: adminUser.id,
 });
-check("settings were restored for the rest of the suite", (await loadSettings()).DECIDE_WINDOW_S === 120);
+check("settings were restored for the rest of the suite", (await loadSettings()).DECIDE_WINDOW_S === 180);
 
 const adminZone = await createZone({ name: "Acceptance Floor", actorId: adminUser.id });
 const adminTable = await createTable({

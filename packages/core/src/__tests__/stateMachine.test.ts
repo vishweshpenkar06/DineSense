@@ -12,6 +12,7 @@ function ctx(state: TableState, overrides: Partial<TableContext> = {}): TableCon
     hasOrders: false,
     hasUnpaidBill: false,
     isFirstOrder: true,
+    cleanedAt: null,
     ...overrides,
   };
 }
@@ -30,22 +31,37 @@ function run(state: TableState, event: TableEvent, overrides: Partial<TableConte
 }
 
 describe("transition: VISION_OCCUPIED", () => {
-  it("free -> occupied opens a session with a 120s deadline", () => {
+  it("free -> occupied opens a session with a 180s deadline", () => {
     const result = run("free", { type: "VISION_OCCUPIED", at: AT }, { hasOpenSession: false });
     expect(result.state).toBe("occupied");
     expect(result.changed).toBe(true);
     const open = result.effects.find((e) => e.kind === "openSession");
     expect(open).toMatchObject({ kind: "openSession" });
     if (open?.kind === "openSession") {
-      expect(open.deadlineAt?.getTime()).toBe(AT.getTime() + 120_000);
+      expect(open.deadlineAt?.getTime()).toBe(AT.getTime() + 180_000);
     }
   });
 
-  it("needs_cleaning -> occupied completes the cleaning task and opens a new session", () => {
+  it("does not auto-seat a table that still needs cleaning", () => {
     const result = run("needs_cleaning", { type: "VISION_OCCUPIED", at: AT }, { hasOpenSession: false });
-    expect(result.state).toBe("occupied");
-    expect(kinds(result.effects)).toContain("completeTasks:clean_table");
-    expect(kinds(result.effects)).toContain("openSession");
+    expect(result.state).toBe("needs_cleaning");
+    expect(result.changed).toBe(false);
+  });
+
+  it("waits 60 seconds after cleaning before auto-seating", () => {
+    const recent = run(
+      "free",
+      { type: "VISION_OCCUPIED", at: AT },
+      { hasOpenSession: false, cleanedAt: new Date(AT.getTime() - 30_000) },
+    );
+    expect(recent.state).toBe("free");
+    const old = run(
+      "free",
+      { type: "VISION_OCCUPIED", at: AT },
+      { hasOpenSession: false, cleanedAt: new Date(AT.getTime() - 61_000) },
+    );
+    expect(old.state).toBe("occupied");
+    expect(kinds(old.effects)).toContain("openSession");
   });
 
   it.each(["occupied", "ordered", "food_ready", "dining", "bill_requested"] as const)(
@@ -272,14 +288,14 @@ describe("transition: invariants", () => {
     let hasOpenSession = false;
     for (const event of events) {
       const first = transition(
-        { state, hasOpenSession, hasOrders: state !== "occupied" && state !== "needs_order", hasUnpaidBill: false, isFirstOrder: false },
+        { state, hasOpenSession, hasOrders: state !== "occupied" && state !== "needs_order", hasUnpaidBill: false, isFirstOrder: false, cleanedAt: null },
         event,
         DEFAULT_SETTINGS,
       );
       state = first.state;
       if (event.type === "VISION_OCCUPIED") hasOpenSession = true;
       const again = transition(
-        { state, hasOpenSession, hasOrders: true, hasUnpaidBill: false, isFirstOrder: false },
+        { state, hasOpenSession, hasOrders: true, hasUnpaidBill: false, isFirstOrder: false, cleanedAt: null },
         event,
         DEFAULT_SETTINGS,
       );

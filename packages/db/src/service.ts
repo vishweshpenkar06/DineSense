@@ -13,7 +13,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "./client";
 import { assertBillEditableTx } from "./billing";
 import { ConflictError, DomainError, NotFoundError } from "./errors";
-import { applyTableEventTx, emitApplied, type ApplyResult } from "./engine";
+import { applyTableEventTx, emitApplied, reconcileServiceTx, type ApplyResult } from "./engine";
 import { notify } from "./notify";
 import { loadSettings } from "./settings";
 
@@ -103,8 +103,9 @@ export async function getMenuStock(): Promise<{ variants: StockVariantDto[] }> {
 export async function setVariantAvailability(input: {
   variantId: string;
   available: boolean;
+  zoneId?: string;
   actorId?: string | null;
-}): Promise<{ variantId: string; available: boolean }> {
+}): Promise<{ variantId: string; available: boolean; zoneId: string | null }> {
   const updated = await prisma.$transaction(async (tx) => {
     const variant = await tx.menuVariant.findUnique({
       where: { id: input.variantId },
@@ -113,7 +114,10 @@ export async function setVariantAvailability(input: {
     if (!variant) throw new NotFoundError("menu variant");
 
     const result = await tx.variantZonePrice.updateMany({
-      where: { variantId: input.variantId },
+      where: {
+        variantId: input.variantId,
+        ...(input.zoneId ? { zoneId: input.zoneId } : {}),
+      },
       data: { available: input.available },
     });
     if (result.count === 0) throw new NotFoundError("menu variant price");
@@ -124,10 +128,15 @@ export async function setVariantAvailability(input: {
         action: "menu.variant_availability",
         entity: "menu_variant",
         entityId: input.variantId,
-        detail: { available: input.available, name: variant.item.name, variant: variant.label },
+        detail: {
+          available: input.available,
+          name: variant.item.name,
+          variant: variant.label,
+          zoneId: input.zoneId ?? null,
+        },
       },
     });
-    return { variantId: variant.id, available: input.available };
+    return { variantId: variant.id, available: input.available, zoneId: input.zoneId ?? null };
   });
 
   await notify("menu.availability", updated);
@@ -278,6 +287,7 @@ export async function readyOrder(orderId: string, actor: Actor): Promise<{ statu
         settings,
         actorId: actor.id,
       });
+      await reconcileServiceTx(tx, order.sessionId, settings, now);
       return {
         tableId: order.session.tableId,
         applied,
@@ -314,7 +324,10 @@ async function finishSessionService(
   const remaining = await tx.order.count({
     where: { sessionId, status: { notIn: ["SERVED", "CANCELLED"] } },
   });
-  if (remaining > 0) return { tableId: session.tableId, applied: null };
+  if (remaining > 0) {
+    await reconcileServiceTx(tx, sessionId, settings, now);
+    return { tableId: session.tableId, applied: null };
+  }
 
   if (session.tableId) {
     const applied = await applyTableEventTx(tx, {
@@ -323,6 +336,7 @@ async function finishSessionService(
       settings,
       actorId: actor.id,
     });
+    await reconcileServiceTx(tx, sessionId, settings, now);
     return { tableId: session.tableId, applied };
   }
 
@@ -437,6 +451,7 @@ export async function cancelOrderItem(input: {
         detail: { orderId: item.orderId, reason: reason || null, wasStarted: started },
       },
     });
+    await reconcileServiceTx(tx, item.order.sessionId, await loadSettings(), now);
     return { orderId: item.orderId, orderCancelled };
   });
 
@@ -576,14 +591,16 @@ export async function requestBill(input: {
   if (!session.tableId) throw new ConflictError("Takeaway billing arrives with the receptionist app");
 
   const settings = await loadSettings();
-  const result = await prisma.$transaction((tx) =>
-    applyTableEventTx(tx, {
+  const result = await prisma.$transaction(async (tx) => {
+    const applied = await applyTableEventTx(tx, {
       tableId: session.tableId as string,
       event: { type: "BILL_REQUESTED", at: new Date() },
       settings,
       actorId: input.actorId ?? null,
-    }),
-  );
+    });
+    await reconcileServiceTx(tx, input.sessionId, settings);
+    return applied;
+  });
   await emitApplied(result);
   return { state: result.state };
 }

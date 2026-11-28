@@ -135,7 +135,7 @@ export async function runSetupDemo(actorId: string | null): Promise<SetupDemoRes
     });
     steps.push({
       label: "Timer fired",
-      detail: "The 2-minute decision alert appeared for the waiter.",
+      detail: "The 3-minute decision alert appeared for the waiter.",
     });
 
     const order = await placeOrder({

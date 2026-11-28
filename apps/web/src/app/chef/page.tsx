@@ -40,6 +40,7 @@ export default function ChefPage() {
   const [stock, setStock] = useState<StockVariantDto[]>([]);
   const [byDish, setByDish] = useState(false);
   const [showStock, setShowStock] = useState(false);
+  const [stockZoneId, setStockZoneId] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const known = useRef<Map<string, string>>(new Map());
@@ -155,6 +156,12 @@ export default function ChefPage() {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [tickets]);
 
+  const stockZones = useMemo(() => {
+    const zones = new Map<string, string>();
+    for (const table of snapshot?.tables ?? []) zones.set(table.zone.id, table.zone.name);
+    return [...zones.entries()];
+  }, [snapshot]);
+
   const stockGroups = useMemo(() => {
     const map = new Map<string, StockVariantDto[]>();
     for (const variant of stock) {
@@ -252,6 +259,19 @@ export default function ChefPage() {
             <div>
               <h2 className="text-sm font-semibold">Stock</h2>
               <p className="text-[11px] text-muted">Tap a variant to mark it sold out or available.</p>
+              <select
+                aria-label="Stock floor"
+                value={stockZoneId}
+                onChange={(event) => setStockZoneId(event.target.value)}
+                className="mt-2 rounded-lg border border-line bg-canvas px-2 py-1 text-xs text-ink"
+              >
+                <option value="">All floors</option>
+                {stockZones.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
             </div>
             <button
               type="button"
@@ -276,6 +296,7 @@ export default function ChefPage() {
                         void act(`stock-${variant.id}`, async () => {
                           await postJson(`/api/menu-variants/${variant.id}/availability`, {
                             available: !variant.available,
+                            zoneId: stockZoneId || undefined,
                           });
                           await loadStock();
                         })

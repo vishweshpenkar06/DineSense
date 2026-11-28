@@ -65,6 +65,7 @@ export type TableContext = {
   hasUnpaidBill: boolean;
   /** True when the session exists and no first order has been recorded yet. */
   isFirstOrder: boolean;
+  cleanedAt: Date | null;
 };
 
 export type Effect =

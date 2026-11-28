@@ -58,7 +58,7 @@ Open `http://192.168.1.43/login`, choose **Admin password**, sign in, and follow
 4. Menu: import the CSV/XLSX (`category,item,local_name,variant,price_ground,
    price_first,veg,needs_kitchen`).
 5. Staff: create the waiter, chef and receptionist with 4–6 digit PINs.
-6. Timers/tax: the decision timer defaults to **120 seconds**. Set the GST rate/mode, service charge, HSN and business-day start the accountant gave you.
+6. Timers/tax: the decision timer defaults to **180 seconds**. Set the GST rate/mode, service charge, HSN and business-day start the accountant gave you.
 7. Run the guided test (seated → alert → order → ready → served → paid) and
    finish. The test data removes itself.
 

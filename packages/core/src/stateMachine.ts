@@ -89,16 +89,16 @@ function closeSession(reason: SessionCloseReason, at: Date): Effect {
 export function transition(ctx: TableContext, event: TableEvent, settings: Settings): TransitionResult {
   switch (event.type) {
     case "VISION_OCCUPIED": {
-      if (ctx.state === "free" || ctx.state === "needs_cleaning") {
-        const effects: Effect[] = [];
-        if (ctx.state === "needs_cleaning") {
-          effects.push({ kind: "completeTasks", taskType: "clean_table" });
+      if (ctx.state === "free") {
+        if (ctx.cleanedAt && event.at.getTime() - ctx.cleanedAt.getTime() <= 60_000) {
+          return unchanged(ctx);
         }
-        effects.push({
-          kind: "openSession",
-          deadlineAt: deadlineFrom(event.at, settings.DECIDE_WINDOW_S),
-        });
-        return move("occupied", effects);
+        return move("occupied", [
+          {
+            kind: "openSession",
+            deadlineAt: deadlineFrom(event.at, settings.DECIDE_WINDOW_S),
+          },
+        ]);
       }
       return unchanged(ctx);
     }

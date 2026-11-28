@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "./client";
 import { assertBillEditableTx } from "./billing";
 import { ConflictError, DomainError, NotFoundError } from "./errors";
-import { applyTableEventTx, emitApplied, type ApplyResult } from "./engine";
+import { applyTableEventTx, emitApplied, reconcileServiceTx, type ApplyResult } from "./engine";
 import { notify } from "./notify";
 import { loadSettings } from "./settings";
 
@@ -121,6 +121,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     });
 
     const businessDay = businessDayStart(at, settings.BUSINESS_DAY_START);
+    await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(${'kot-' + businessDay.toISOString().slice(0, 10)}))) AS lock_row`;
     const last = await tx.order.aggregate({
       where: { businessDay },
       _max: { kotNumber: true },
@@ -156,6 +157,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         data: { state: "ordered", firstOrderAt: session.firstOrderAt ?? at },
       });
     }
+    await reconcileServiceTx(tx, session.id, settings, at);
 
     return { orderId: order.id, kotNumber, sessionId: session.id, tableId, applied };
   }).catch(async (error: unknown) => {

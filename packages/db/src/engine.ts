@@ -1,4 +1,5 @@
 import {
+  deriveServiceState,
   taskText,
   transition,
   type Effect,
@@ -42,6 +43,7 @@ export async function applyTableEventTx(
   tx: Prisma.TransactionClient,
   input: ApplyInput,
 ): Promise<ApplyResult> {
+  await tx.$queryRaw`SELECT id FROM "DiningTable" WHERE id = ${input.tableId} FOR UPDATE`;
   const table = await tx.diningTable.findUnique({
     where: { id: input.tableId },
     include: { zone: true },
@@ -64,6 +66,7 @@ export async function applyTableEventTx(
     hasOrders: (session?._count.orders ?? 0) > 0,
     hasUnpaidBill: unpaidBills > 0,
     isFirstOrder: session ? session.firstOrderAt === null : false,
+    cleanedAt: table.cleanedAt,
   };
 
   const result = transition(ctx, input.event, input.settings);
@@ -206,9 +209,16 @@ export async function applyTableEventTx(
   }
 
   if (result.changed) {
+    const wasCleaned =
+      table.state === "needs_cleaning" &&
+      (input.event.type === "CLEANED" ||
+        (input.event.type === "MANUAL_SET" && result.state === "free"));
     await tx.diningTable.update({
       where: { id: table.id },
-      data: { state: result.state as DbTableState },
+      data: {
+        state: result.state as DbTableState,
+        cleanedAt: wasCleaned ? input.event.at : undefined,
+      },
     });
     if (sessionId) {
       await tx.session.update({
@@ -242,10 +252,76 @@ export async function emitApplied(result: ApplyResult): Promise<void> {
   }
 }
 
+export async function reconcileServiceTx(
+  tx: Prisma.TransactionClient,
+  sessionId: string,
+  settings: Settings,
+  at: Date = new Date(),
+): Promise<void> {
+  const session = await tx.session.findUnique({
+    where: { id: sessionId },
+    select: { id: true, tableId: true, closedAt: true },
+  });
+  if (!session || session.closedAt || !session.tableId) return;
+
+  const orders = await tx.order.findMany({
+    where: { sessionId },
+    select: { status: true },
+  });
+  const billRequested =
+    (await tx.task.count({
+      where: { sessionId, type: "bill_requested", status: { in: [...OPEN_TASK_STATUSES] } },
+    })) > 0;
+  const state = deriveServiceState(orders as Array<{ status: "PLACED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED" }>, billRequested);
+
+  await tx.diningTable.update({ where: { id: session.tableId }, data: { state } });
+  await tx.session.update({ where: { id: sessionId }, data: { state } });
+
+  const anyReady = orders.some((order) => order.status === "READY");
+  const openReadyTasks = await tx.task.findMany({
+    where: { sessionId, type: "food_ready", status: { in: [...OPEN_TASK_STATUSES] } },
+    select: { id: true },
+  });
+  if (!anyReady) {
+    if (openReadyTasks.length > 0) {
+      await tx.task.updateMany({
+        where: { id: { in: openReadyTasks.map((task) => task.id) } },
+        data: { status: "DONE", doneAt: at },
+      });
+    }
+    const live = orders.some(
+      (order) => order.status === "PLACED" || order.status === "PREPARING",
+    );
+    if (!live) {
+      await tx.session.update({
+        where: { id: sessionId },
+        data: { decisionDeadline: new Date(at.getTime() + settings.DECIDE_WINDOW_S * 1000) },
+      });
+    }
+  } else if (openReadyTasks.length === 0) {
+    const task = await tx.task.create({
+      data: {
+        type: "food_ready",
+        priority: 1,
+        sessionId,
+        text: "Food ready for pickup",
+      },
+    });
+    await notify("task.created", { taskIds: [task.id], sessionId });
+  }
+}
+
 export async function applyTableEvent(input: ApplyInput): Promise<ApplyResult> {
-  const result = await prisma.$transaction((tx) => applyTableEventTx(tx, input));
-  await emitApplied(result);
-  return result;
+  try {
+    const result = await prisma.$transaction((tx) => applyTableEventTx(tx, input));
+    await emitApplied(result);
+    return result;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new ConflictError("Another event changed this table first");
+    }
+    throw error;
+  }
 }
 
 export async function setTableStateManually(input: {

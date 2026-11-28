@@ -62,7 +62,7 @@ export default function LoginPage() {
           </p>
           <div className="mt-10 grid gap-4 text-sm sm:grid-cols-3">
             {[
-              { icon: Timer, label: "2-min table timer" },
+              { icon: Timer, label: "3-min table timer" },
               { icon: ChefHat, label: "Live kitchen board" },
               { icon: Receipt, label: "Bills without maths" },
             ].map(({ icon: Icon, label }) => (

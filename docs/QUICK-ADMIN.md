@@ -11,7 +11,7 @@
    plus chairs on the raw image; save each table. 11 zones take ~10–20 minutes.
 6. **Staff:** create waiters/chefs/receptionists with PINs; reset credentials or
    deactivate people. The owner account uses a password.
-7. **Settings:** the decision timer (default 120 s), GST rate/mode, service charge, HSN, bill prefix, business-day start, and restaurant profile with GSTIN, FSSAI and UPI QR.
+7. **Settings:** the decision timer (default 180 s), GST rate/mode, service charge, HSN, bill prefix, business-day start, and restaurant profile with GSTIN, FSSAI and UPI QR.
 8. **Day close:** count cash, see expected UPI/card and record the variance.
 9. **Health:** database, worker, disk, last backup, clock skew, cameras; download diagnostics. Nightly backups are in `backups/` (14 days).
 10. **Pilot:** enable Shadow mode in Settings during the pilot; open **Pilot** daily to

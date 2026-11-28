@@ -106,7 +106,7 @@ The 120-item AC/non-AC menu imports with 235 variants and 470 floor prices, zero
 ## Daily service flow
 
 1. The waiter seats a table or confirms a camera detection.
-2. The 120-second decision timer creates a “waiting to order” alert if needed.
+2. The 180-second decision timer creates a “waiting to order” alert if needed.
 3. The waiter sends the order to the kitchen with the correct floor prices and variants.
 4. The chef starts and finishes tickets. Food-ready alerts outrank older tasks.
 5. The waiter marks food served, then requests the bill.

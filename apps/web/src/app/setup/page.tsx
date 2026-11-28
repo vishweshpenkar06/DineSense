@@ -451,7 +451,7 @@ export default function SetupPage() {
         <div className="space-y-2">
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
             The decision timer is <strong>{settingsData.settings.DECIDE_WINDOW_S} seconds</strong> by
-            default. Keep 120 for the 2-minute rule; change it here only if the owner asks.
+            default. Keep 180 for the 3-minute rule; change it here only if the owner asks.
           </div>
           <SettingsPanel data={settingsData} busy={busy} run={run} onChanged={loadSettings} />
         </div>
